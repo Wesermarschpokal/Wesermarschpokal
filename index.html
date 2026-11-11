@@ -1,0 +1,2356 @@
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spielbericht Wesermarschpokal</title>
+    <!-- Library für direkten PDF-Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Library für Excel-Import (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --primary: #0284c7;
+            --primary-hover: #0369a1;
+            --text-main: #0f172a;
+            --border-color: #cbd5e1;
+            --completed-bg: #dcfce7;
+            --error-bg: #fee2e2;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Burger Menu Navigation */
+        .burger-menu-container {
+            position: absolute;
+            top: 45px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        .burger-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 28px;
+            height: 22px;
+        }
+
+        .burger-btn span {
+            display: block;
+            height: 3px;
+            width: 100%;
+            background-color: var(--primary);
+            border-radius: 2px;
+        }
+
+        .drawer-menu {
+            display: none;
+            position: absolute;
+            top: 35px;
+            left: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            width: 240px;
+            padding: 10px 0;
+            z-index: 101;
+        }
+
+        .drawer-menu.active { display: block; }
+
+        .drawer-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 10px 15px;
+            background: none;
+            border: none;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .drawer-btn:hover {
+            background-color: #f1f5f9;
+            color: var(--primary);
+        }
+
+        .drawer-btn.danger:hover {
+            background-color: #fee2e2;
+            color: #ef4444;
+        }
+
+        .header-print {
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .header-title h1 {
+            color: var(--primary);
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .header-title p {
+            margin: 2px 0 0 0;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+            align-items: stretch;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px 5px;
+            border: none;
+            background: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            line-height: 1.2;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Layout & Formulare */
+        .grid-2 { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+
+        @media (min-width: 600px) {
+            .grid-2 { grid-template-columns: 1fr 1fr; }
+            .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        }
+
+        .card-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .form-group { margin-bottom: 10px; }
+        label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.85rem; }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            background-color: #fff;
+            -webkit-appearance: none;
+        }
+
+        .card {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 15px;
+        }
+        .card h3 { margin: 0; color: var(--primary); font-size: 1rem; }
+
+        .btn-system-info {
+            padding: 3px 8px;
+            font-size: 0.75rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-system-info:hover { background-color: var(--primary-hover); }
+
+        .pdf-footer-hint {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 15px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .modal-body ol {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .match-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .match-card.match-completed { background-color: var(--completed-bg) !important; }
+        .match-card.match-error { background-color: var(--error-bg) !important; }
+
+        .match-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .match-num {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #64748b;
+            min-width: 24px;
+        }
+
+        .match-players-info {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        .player-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        .match-vorgabe-badge {
+            background: #e2e8f0;
+            color: #334155;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .match-result-box {
+            text-align: right;
+            min-width: 70px;
+        }
+
+        .match-result-box .saetze-val {
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: block;
+        }
+
+        .match-result-box .punkte-val {
+            font-size: 0.8rem;
+            color: var(--primary);
+            font-weight: bold;
+            display: block;
+        }
+
+        .match-satze-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 8px;
+            margin-top: 6px;
+        }
+
+        .satz-input-group {
+            text-align: center;
+        }
+
+        .satz-input-group label {
+            font-size: 0.65rem;
+            color: #64748b;
+            margin-bottom: 2px;
+            display: block;
+            text-align: center;
+        }
+
+        .satz-input-single {
+            width: 100% !important;
+            text-align: center !important;
+            padding: 4px 2px;
+            font-size: 0.85rem;
+            box-sizing: border-box;
+            -webkit-appearance: none;
+        }
+
+        .table-select {
+            padding: 2px 4px;
+            font-size: 0.8rem;
+            margin: 1px 0;
+            border-radius: 4px;
+            -webkit-appearance: none;
+        }
+
+        .summary-card {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 0.95rem;
+            margin-top: 15px;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .btn:hover { background-color: var(--primary-hover); }
+        .btn-secondary { background-color: #64748b; }
+        .btn-secondary:hover { background-color: #475569; }
+        .btn-success { background-color: #22c55e; }
+        .btn-success:hover { background-color: #16a34a; }
+
+        .tab-footer-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .right-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .sig-container { position: relative; }
+        
+        canvas.sig-canvas {
+            border: 1px dashed var(--primary);
+            border-radius: 6px;
+            background: #fafafa;
+            cursor: crosshair;
+            width: 100%;
+            height: 120px;
+            touch-action: none;
+            -webkit-user-select: none;
+            display: block;
+        }
+
+        .clear-btn {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 0.7rem;
+            padding: 3px 6px;
+            background: #ef4444;
+            z-index: 10;
+        }
+
+        .alert-box {
+            padding: 10px;
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #f87171;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        /* PDF EXPORT OPTIMIERUNGEN */
+        .pdf-export-mode {
+            width: 210mm !important;
+            box-sizing: border-box !important;
+            padding: 3mm 5mm !important;
+            margin: 0 !important;
+            background: #fff !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+        }
+
+        .pdf-export-mode .header-print {
+            border-bottom: 1.2px solid var(--primary) !important;
+            padding-bottom: 1mm !important;
+            margin-bottom: 1.5mm !important;
+        }
+
+        .pdf-export-mode .header-title h1 { font-size: 9pt !important; }
+        .pdf-export-mode .header-title p { font-size: 5.5pt !important; margin-bottom: 0 !important; }
+
+        .pdf-export-mode .card {
+            border: 1px solid #cbd5e1 !important;
+            background: #fff !important;
+            padding: 2px 4px !important;
+            margin-bottom: 1.2mm !important;
+            border-radius: 2px !important;
+        }
+
+        .pdf-export-mode .card h3 { font-size: 7.5pt !important; margin-bottom: 1px !important; }
+
+        .pdf-export-mode .grid-2 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 3px !important;
+        }
+
+        .pdf-export-mode .grid-3 {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr 1fr !important;
+            gap: 3px !important;
+        }
+
+        .pdf-export-mode .form-group {
+            margin-bottom: 0.8px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+        }
+
+        .pdf-export-mode label {
+            font-size: 5.5pt !important;
+            margin-bottom: 0 !important;
+        }
+
+        .pdf-export-mode input, .pdf-export-mode select {
+            border: none !important;
+            border-bottom: 1px solid #94a3b8 !important;
+            background: transparent !important;
+            font-size: 6pt !important;
+            padding: 0.5px 2px !important;
+            height: auto !important;
+            text-align: right !important;
+            width: 55% !important;
+        }
+
+        .pdf-export-mode .match-card {
+            padding: 1.5px 3px !important;
+            margin-bottom: 0.8mm !important;
+            font-size: 5.5pt !important;
+        }
+
+        .pdf-export-mode .match-top-row {
+            margin-bottom: 0.5px !important;
+        }
+
+        .pdf-export-mode .match-num {
+            font-size: 6pt !important;
+            min-width: 14px !important;
+        }
+
+        .pdf-export-mode .match-players-info {
+            font-size: 6pt !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 3px !important;
+            flex-wrap: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        .pdf-export-mode .player-line {
+            display: inline !important;
+            padding: 0 !important;
+        }
+
+        .pdf-export-mode .player-line-separator {
+            font-weight: bold;
+            color: #64748b;
+            padding: 0 2px;
+        }
+
+        .pdf-export-mode .qttr-span {
+            font-size: 6pt !important;
+            color: #64748b !important;
+        }
+
+        .pdf-export-mode .match-vorgabe-badge {
+            padding: 0.5px 3px !important;
+            font-size: 5pt !important;
+        }
+
+        .pdf-export-mode .match-result-box .saetze-val {
+            font-size: 6.5pt !important;
+        }
+
+        .pdf-export-mode .match-result-box .punkte-val {
+            font-size: 6pt !important;
+        }
+
+        .pdf-export-mode .match-satze-row {
+            padding-top: 1px !important;
+            margin-top: 1px !important;
+            display: grid !important;
+            grid-template-columns: repeat(5, 1fr) !important;
+            gap: 1.5px !important;
+        }
+
+        .pdf-export-mode .satz-input-group label {
+            font-size: 4.5pt !important;
+            margin-bottom: 0.2px !important;
+            text-align: center !important;
+        }
+
+        .pdf-export-mode .satz-input-single {
+            font-size: 5.5pt !important;
+            padding: 0.2px !important;
+            text-align: center !important;
+            width: 100% !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 1.5px !important;
+        }
+
+        .pdf-export-mode .summary-card {
+            padding: 2px 5px !important;
+            margin-top: 1.2mm !important;
+            font-size: 7pt !important;
+            border-radius: 3px !important;
+        }
+
+        .pdf-export-mode .sig-container {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 auto !important;
+            width: 80% !important;
+            max-width: 384px !important;
+            padding: 2px 4px !important;
+        }
+
+        .pdf-export-mode .sig-container label {
+            font-size: 5.5pt !important;
+            margin-bottom: 0.5px !important;
+        }
+
+        .pdf-export-mode canvas.sig-canvas {
+            border: 1px solid #94a3b8 !important;
+            height: 48px !important;
+            width: 100% !important;
+            background: #fff !important;
+        }
+
+        .pdf-export-mode .pdf-footer-hint {
+            font-size: 4.5pt !important;
+            margin-top: 0.5mm !important;
+            padding-top: 0.5mm !important;
+            border-top: 1px solid #cbd5e1 !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="pdfContent">
+    <!-- Burger-Menü in der linken oberen Ecke -->
+    <div class="burger-menu-container hide-on-pdf">
+        <button type="button" class="burger-btn" id="burgerBtn" title="Menü öffnen">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <div class="drawer-menu" id="drawerMenu">
+            <button type="button" class="drawer-btn" id="btnAdminLogin">🔒 Admin</button>
+            <button type="button" class="drawer-btn" id="btnSettings" style="display: none;">⚙️ Einstellungen</button>
+            <button type="button" class="drawer-btn danger" id="btnResetGame">🔄 Spiel zurücksetzen</button>
+        </div>
+    </div>
+
+    <div class="header-print">
+        <div class="header-title">
+            <h1>Tischtennis Kreisverband Wesermarsch e.V.</h1>
+            <p>Spielformular Wesermarschpokal</p>
+        </div>
+    </div>
+
+    <!-- Navigation Tab Leiste -->
+    <div class="nav-tabs hide-on-pdf">
+        <button type="button" class="tab-btn active" id="btn-tab1">1. Aufstellung</button>
+        <button type="button" class="tab-btn" id="btn-tab2">2. Spielbericht</button>
+        <button type="button" class="tab-btn" id="btn-tab3"><span>3.</span><span>Abschluss</span></button>
+    </div>
+
+    <form id="pokalForm" onsubmit="return false;">
+        <!-- OBERFLÄCHE 1: STAMMDATEN -->
+        <div id="tab1" class="tab-content active">
+            <div class="grid-3 card">
+                <div class="form-group">
+                    <label>Spielklasse</label>
+                    <select id="spielklasse">
+                        <option value="Erwachsene">Erwachsene</option>
+                        <option value="Jugend 19">Jugend 19</option>
+                        <option value="Jugend 15">Jugend 15</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Datum</label>
+                    <input type="date" id="datum">
+                </div>
+                <div class="form-group">
+                    <label>Uhrzeit</label>
+                    <input type="time" id="uhrzeit">
+                </div>
+            </div>
+
+            <!-- Manuelle Vorgabe (nur sichtbar, wenn QTTR deaktiviert) -->
+            <div class="card" id="manualVorgabeCard" style="display: none;">
+                <h3>Manuelle Vorgabe</h3>
+                <div class="grid-2" style="margin-top: 8px;">
+                    <div class="form-group">
+                        <label>Vorgabebeginn / Begünstigter</label>
+                        <select id="fixedVorgabeTeam">
+                            <option value="Keine">Keine Vorgabe (0 Punkte)</option>
+                            <option value="Heim">Heim erhält Vorgabe</option>
+                            <option value="Gast">Gast erhält Vorgabe</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Vorgabepunkte</label>
+                        <input type="number" id="fixedVorgabeValue" value="1" min="1" max="20" step="1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <!-- Heimmannschaft -->
+                <div class="card card-team-info">
+                    <div class="card-header-flex">
+                        <h3>Heimmannschaft (ABC)</h3>
+                        <button type="button" class="btn-system-info hide-on-pdf" onclick="openSystemModal()">System</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Mannschaftsname</label>
+                        <select id="heimName">
+                            <option value="">Bitte Verein wählen</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler A</label>
+                        <select id="spielerA_A"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler B</label>
+                        <select id="spielerA_B"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler C</label>
+                        <select id="spielerA_C"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel 1</label>
+                        <select id="spielerA_D1"><option value="">Keiner (optional)</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel 2</label>
+                        <select id="spielerA_D2"><option value="">Keiner (optional)</option></select>
+                    </div>
+                </div>
+
+                <!-- Gastmannschaft -->
+                <div class="card card-team-info">
+                    <div class="card-header-flex">
+                        <h3>Gastmannschaft (XYZ)</h3>
+                        <button type="button" class="btn-system-info hide-on-pdf" onclick="openSystemModal()">System</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Mannschaftsname</label>
+                        <select id="gastName">
+                            <option value="">Bitte Verein wählen</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler X</label>
+                        <select id="spielerB_A"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler Y</label>
+                        <select id="spielerB_B"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler Z</label>
+                        <select id="spielerB_C"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel 1</label>
+                        <select id="spielerB_D1"><option value="">Keiner (optional)</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel 2</label>
+                        <select id="spielerB_D2"><option value="">Keiner (optional)</option></select>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: right; margin-top: 10px;" class="hide-on-pdf">
+                <button type="button" class="btn" id="go-tab2">Weiter zu Spielbericht &rarr;</button>
+            </div>
+        </div>
+
+        <!-- OBERFLÄCHE 2: SPIELBERICHT -->
+        <div id="tab2" class="tab-content">
+            <div id="matchCardContainer">
+                <!-- Dynamisch generierte Begegnungs-Karten -->
+            </div>
+            
+            <div class="summary-card">
+                <span>Gesamtergebnis:</span>
+                <div>
+                    <span id="totalSaetzeCell">0 : 0</span> &nbsp;|&nbsp; 
+                    <span id="totalPunkteCell" style="color: var(--primary);">0 : 0</span>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;" class="hide-on-pdf">
+                <button type="button" class="btn btn-secondary" id="back-tab1">&larr; Zurück</button>
+                <button type="button" class="btn" id="go-tab3">Weiter zu Abschluss &rarr;</button>
+            </div>
+        </div>
+
+        <!-- OBERFLÄCHE 3: ABSCHLUSS -->
+        <div id="tab3" class="tab-content">
+            <div class="card">
+                <h3>Endergebnis</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Sieger (Automatisch bei 7 Pkt.)</label>
+                        <input type="text" id="sieger" readonly style="font-weight: bold; background: #f1f5f9;">
+                    </div>
+                    <div class="form-group">
+                        <label>Spielende (Uhrzeit) *</label>
+                        <input type="time" id="spielende">
+                    </div>
+                    <div class="form-group">
+                        <label>Endstand Sätze</label>
+                        <input type="text" id="endSaetze" readonly style="background: #f1f5f9;">
+                    </div>
+                    <div class="form-group">
+                        <label>Endstand Punkte</label>
+                        <input type="text" id="endPunkte" readonly style="background: #f1f5f9; font-weight: bold;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Touch-Unterschriften -->
+            <div class="grid-2">
+                <div class="card sig-container">
+                    <label>Unterschrift Heimmannschaft *</label>
+                    <button type="button" class="btn clear-btn hide-on-pdf" id="clearCanvasA">Löschen</button>
+                    <canvas id="sigCanvasA" class="sig-canvas"></canvas>
+                </div>
+                <div class="card sig-container">
+                    <label>Unterschrift Gastmannschaft *</label>
+                    <button type="button" class="btn clear-btn hide-on-pdf" id="clearCanvasB">Löschen</button>
+                    <canvas id="sigCanvasB" class="sig-canvas"></canvas>
+                </div>
+            </div>
+
+            <div id="validationAlert" class="alert-box"></div>
+
+            <div class="tab-footer-actions hide-on-pdf">
+                <button type="button" class="btn btn-secondary" id="back-tab2">&larr; Zurück</button>
+                <div class="right-buttons">
+                    <button type="button" id="btnAbschliessen" class="btn">Abschließen</button>
+                    <button type="button" id="btnPdfPrint" class="btn btn-success" style="display: none;">PDF öffnen</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- Fußzeilen-Hinweis für PDF -->
+    <div id="pdfFooterHint" class="pdf-footer-hint">Die Vorgabe wurde mit Ligenzugehörigkeit errechnet</div>
+</div>
+
+<!-- Modal: Spielsystem -->
+<div class="modal-overlay hide-on-pdf" id="systemModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Spielsystem Wesermarschpokal</h3>
+            <button type="button" class="close-modal" onclick="closeSystemModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <ol>
+                <li>A/B – X/Y</li>
+                <li>C – Z</li>
+                <li>B/C – Y/Z</li>
+                <li>A – X</li>
+                <li>A/C – X/Z</li>
+                <li>B – Y</li>
+                <li>A – Z</li>
+                <li>C – X</li>
+                <li>B – Z</li>
+                <li>C – Y</li>
+                <li>B – X</li>
+                <li>A – Y</li>
+                <li>Freies Doppel</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Admin Login -->
+<div class="modal-overlay hide-on-pdf" id="adminLoginModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Admin Login</h3>
+            <button type="button" class="close-modal" onclick="closeAdminModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Benutzername</label>
+                <input type="text" id="adminUser" placeholder="Benutzername">
+            </div>
+            <div class="form-group">
+                <label>Passwort</label>
+                <input type="password" id="adminPass" placeholder="Passwort">
+            </div>
+            <div id="loginError" style="color: #ef4444; font-size: 0.8rem; margin-bottom: 8px; display: none;">Falsche Anmeldedaten!</div>
+            <button type="button" class="btn" style="width: 100%; margin-top: 10px;" onclick="checkAdminLogin()">Einloggen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Einstellungen -->
+<div class="modal-overlay hide-on-pdf" id="settingsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Einstellungen</h3>
+            <button type="button" class="close-modal" onclick="closeSettingsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <input type="checkbox" id="toggleQttrVorgabe" style="width: 20px; height: 20px; cursor: pointer;">
+                <label for="toggleQttrVorgabe" style="cursor: pointer; margin: 0; font-weight: 500;">Vorgabe mit QTTR Wert errechnen</label>
+            </div>
+            <div class="form-group">
+                <label for="stepErwachsene">Schrittweite Erwachsene (Punkte)</label>
+                <input type="number" id="stepErwachsene" value="35" min="1" step="1">
+            </div>
+            <div class="form-group">
+                <label for="stepJugend19">Schrittweite Jugend 19 (Punkte)</label>
+                <input type="number" id="stepJugend19" value="35" min="1" step="1">
+            </div>
+            <div class="form-group">
+                <label for="stepJugend15">Schrittweite Jugend 15 (Punkte)</label>
+                <input type="number" id="stepJugend15" value="35" min="1" step="1">
+            </div>
+            <div class="form-group">
+                <label for="maxVorgabeInput">Maximale Vorgabepunkte (QTTR)</label>
+                <input type="number" id="maxVorgabeInput" value="6" min="0" max="20" step="1">
+            </div>
+            <button type="button" class="btn" style="width: 100%; margin-top: 15px;" onclick="saveSettings()">Speichern & Übernehmen</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isLoading = false;
+    let isFormCompleted = false;
+    let qttrVorgabeActive = false;
+    let stepErwachsene = 35;
+    let stepJugend19 = 35;
+    let stepJugend15 = 35;
+    let maxVorgabe = 6;
+    let isAdminLoggedIn = false;
+
+    window.addEventListener('beforeunload', function (e) {
+        e.preventDefault();
+        e.returnValue = 'Möchten Sie die Seite wirklich verlassen? Alle nicht gespeicherten Eingaben gehen verloren.';
+        return e.returnValue;
+    });
+
+    const matchesDef = [
+        { type: 'doppel', keysA: ['A', 'B'], keysB: ['X', 'Y'] },
+        { type: 'einzel', keyA: 'C', keyB: 'Z' },
+        { type: 'doppel', keysA: ['B', 'C'], keysB: ['Y', 'Z'] },
+        { type: 'einzel', keyA: 'A', keyB: 'X' },
+        { type: 'doppel', keysA: ['A', 'C'], keysB: ['X', 'Z'] },
+        { type: 'einzel', keyA: 'B', keyB: 'Y' },
+        { type: 'einzel', keyA: 'A', keyB: 'Z' },
+        { type: 'einzel', keyA: 'C', keyB: 'X' },
+        { type: 'einzel', keyA: 'B', keyB: 'Z' },
+        { type: 'einzel', keyA: 'C', keyB: 'Y' },
+        { type: 'einzel', keyA: 'B', keyB: 'X' },
+        { type: 'einzel', keyA: 'A', keyB: 'Y' },
+        { type: 'frei' }
+    ];
+
+    let sigSignedA = false;
+    let sigSignedB = false;
+
+    function openSystemModal() { document.getElementById('systemModal').classList.add('active'); }
+    function closeSystemModal() { document.getElementById('systemModal').classList.remove('active'); }
+
+    function openAdminModal() { 
+        document.getElementById('drawerMenu').classList.remove('active');
+        document.getElementById('adminUser').value = '';
+        document.getElementById('adminPass').value = '';
+        document.getElementById('loginError').style.display = 'none';
+        document.getElementById('adminLoginModal').classList.add('active'); 
+    }
+    function closeAdminModal() { document.getElementById('adminLoginModal').classList.remove('active'); }
+
+    function checkAdminLogin() {
+        const u = document.getElementById('adminUser').value.trim();
+        const p = document.getElementById('adminPass').value.trim();
+        if (u === 'Admin' && p === 'Adminwmpokal') {
+            closeAdminModal();
+            isAdminLoggedIn = true;
+            document.getElementById('btnSettings').style.display = 'block';
+            alert('Login erfolgreich! Der Menüpunkt "Einstellungen" wurde freigeschaltet.');
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+        }
+    }
+
+    function checkAdminLockOnInput() {
+        if (isAdminLoggedIn) {
+            isAdminLoggedIn = false;
+            const btnSettings = document.getElementById('btnSettings');
+            if (btnSettings) btnSettings.style.display = 'none';
+        }
+    }
+
+    function openSettingsModal() {
+        document.getElementById('drawerMenu').classList.remove('active');
+        document.getElementById('toggleQttrVorgabe').checked = qttrVorgabeActive;
+        document.getElementById('stepErwachsene').value = stepErwachsene;
+        document.getElementById('stepJugend19').value = stepJugend19;
+        document.getElementById('stepJugend15').value = stepJugend15;
+        document.getElementById('maxVorgabeInput').value = maxVorgabe;
+        document.getElementById('settingsModal').classList.add('active');
+    }
+    function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('active'); }
+
+    function updatePdfFooterHint() {
+        const hintEl = document.getElementById('pdfFooterHint');
+        if (hintEl) {
+            hintEl.innerText = qttrVorgabeActive 
+                ? "Die Vorgabe wurde mit QTTR-Werten errechnet" 
+                : "Die Vorgabe wurde mit Ligenzugehörigkeit errechnet";
+        }
+    }
+
+    function applyQttrUIVisibility() {
+        const manualCard = document.getElementById('manualVorgabeCard');
+        if (manualCard) {
+            manualCard.style.display = qttrVorgabeActive ? 'none' : 'block';
+        }
+    }
+
+    function saveSettings() {
+        qttrVorgabeActive = document.getElementById('toggleQttrVorgabe').checked;
+        stepErwachsene = parseInt(document.getElementById('stepErwachsene').value, 10) || 35;
+        stepJugend19 = parseInt(document.getElementById('stepJugend19').value, 10) || 35;
+        stepJugend15 = parseInt(document.getElementById('stepJugend15').value, 10) || 35;
+        maxVorgabe = parseInt(document.getElementById('maxVorgabeInput').value, 10) || 6;
+
+        localStorage.setItem('wesermarsch_qttr_vorgabe', qttrVorgabeActive ? 'true' : 'false');
+        localStorage.setItem('wesermarsch_step_erwachsene', stepErwachsene);
+        localStorage.setItem('wesermarsch_step_jugend19', stepJugend19);
+        localStorage.setItem('wesermarsch_step_jugend15', stepJugend15);
+        localStorage.setItem('wesermarsch_max_vorgabe', maxVorgabe);
+
+        closeSettingsModal();
+        applyQttrUIVisibility();
+        updatePdfFooterHint();
+        renderMatchTable();
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.classList.remove('active');
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        const activeTab = document.getElementById(tabId);
+        if (activeTab) {
+            activeTab.classList.add('active');
+            activeTab.style.display = 'block';
+        }
+        
+        const activeBtn = document.getElementById(`btn-${tabId}`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        if (tabId === 'tab3') {
+            setTimeout(() => {
+                resizeCanvas(document.getElementById('sigCanvasA'));
+                resizeCanvas(document.getElementById('sigCanvasB'));
+            }, 50);
+        }
+    }
+
+    function getPlayerName(team, letter) {
+        const idMap = {
+            'A': 'spielerA_A', 'B': 'spielerA_B', 'C': 'spielerA_C', 'D1': 'spielerA_D1', 'D2': 'spielerA_D2',
+            'X': 'spielerB_A', 'Y': 'spielerB_B', 'Z': 'spielerB_C', 'X2': 'spielerB_D1', 'Y2': 'spielerB_D2'
+        };
+        const inputId = idMap[letter];
+        if (inputId) {
+            const selectEl = document.getElementById(inputId);
+            if (selectEl && selectEl.value.trim() !== '') {
+                return selectEl.value.trim();
+            }
+        }
+        
+        if (letter === 'D1' || letter === 'D2' || letter === 'X2' || letter === 'Y2') {
+            return '';
+        }
+
+        const defaultNames = {
+            'A': 'Spieler A', 'B': 'Spieler B', 'C': 'Spieler C',
+            'X': 'Spieler X', 'Y': 'Spieler Y', 'Z': 'Spieler Z'
+        };
+        return defaultNames[letter] || `Spieler ${letter}`;
+    }
+
+    function getPlayerQttr(team, letter) {
+        let playerName = '';
+        if (letter === 'free1') {
+            const sel = document.getElementById(team === 'A' ? 'm_12_d_a1' : 'm_12_d_b1');
+            playerName = getPlayerName(team, sel ? sel.value : (team === 'A' ? 'A' : 'X'));
+        } else if (letter === 'free2') {
+            const sel = document.getElementById(team === 'A' ? 'm_12_d_a2' : 'm_12_d_b2');
+            playerName = getPlayerName(team, sel ? sel.value : (team === 'A' ? 'B' : 'Y'));
+        } else {
+            playerName = getPlayerName(team, letter);
+        }
+
+        if (!playerName) return 0;
+
+        const rosterJson = localStorage.getItem('wesermarsch_pokal_roster');
+        if (!rosterJson) return 0;
+        try {
+            const roster = JSON.parse(rosterJson);
+            const found = roster.find(item => item.spieler.toLowerCase() === playerName.toLowerCase());
+            if (found) return found.qttr || 0;
+            const foundAny = roster.find(item => item.spieler.toLowerCase().includes(playerName.toLowerCase()) || playerName.toLowerCase().includes(item.spieler.toLowerCase()));
+            if (foundAny) return foundAny.qttr || 0;
+        } catch (e) {
+            console.error(e);
+        }
+        return 0;
+    }
+
+    function getCurrentStepValue() {
+        const spielklasse = document.getElementById('spielklasse').value.trim().toLowerCase();
+        if (spielklasse.includes('jugend 19')) return stepJugend19;
+        if (spielklasse.includes('jugend 15') || spielklasse.includes('jugend 13')) return stepJugend15;
+        return stepErwachsene;
+    }
+
+    function calculateQttrVorgabePoints(qttrA, qttrB) {
+        let step = getCurrentStepValue();
+        let diff = Math.abs(qttrA - qttrB);
+        if (diff < step) return 0;
+        let k = Math.floor(diff / step);
+        let points = k + 1;
+        return Math.min(maxVorgabe, points);
+    }
+
+    function formatSatzInput(val) {
+        if (!val) return '';
+        let str = val.trim();
+        if (str.includes(':')) return str;
+        
+        let num = parseInt(str, 10);
+        if (isNaN(num)) return str;
+
+        if (num > 0) {
+            let loserPts = num;
+            let winnerPts = loserPts >= 10 ? loserPts + 2 : 11;
+            return `${winnerPts}:${loserPts}`;
+        } else if (num < 0) {
+            let loserPts = Math.abs(num);
+            let winnerPts = loserPts >= 10 ? loserPts + 2 : 11;
+            return `${loserPts}:${winnerPts}`;
+        }
+        return str;
+    }
+
+    function autoSelectGame13IfNewPlayers() {
+        const d1A = document.getElementById('spielerA_D1').value.trim();
+        const d2A = document.getElementById('spielerA_D2').value.trim();
+        const selA1 = document.getElementById('m_12_d_a1');
+        const selA2 = document.getElementById('m_12_d_a2');
+
+        if (selA1 && selA2) {
+            if (d1A !== '' && d2A !== '') {
+                selA1.value = 'D1';
+                selA2.value = 'D2';
+            } else if (d1A !== '') {
+                selA1.value = 'D1';
+                if (selA2.value === 'D1') selA2.value = 'B';
+            } else if (d2A !== '') {
+                selA2.value = 'D2';
+                if (selA1.value === 'D2') selA1.value = 'A';
+            }
+        }
+
+        const d1B = document.getElementById('spielerB_D1').value.trim();
+        const d2B = document.getElementById('spielerB_D2').value.trim();
+        const selB1 = document.getElementById('m_12_d_b1');
+        const selB2 = document.getElementById('m_12_d_b2');
+
+        if (selB1 && selB2) {
+            if (d1B !== '' && d2B !== '') {
+                selB1.value = 'X2';
+                selB2.value = 'Y2';
+            } else if (d1B !== '') {
+                selB1.value = 'X2';
+                if (selB2.value === 'X2') selB2.value = 'Y';
+            } else if (d2B !== '') {
+                selB2.value = 'Y2';
+                if (selB1.value === 'Y2') selB1.value = 'X';
+            }
+        }
+    }
+
+    function getFilteredOptions(choices, selectedVal, excludedVal) {
+        return choices.map(c => {
+            if (c.val === excludedVal && c.val !== selectedVal) {
+                return '';
+            }
+            let sel = (c.val === selectedVal) ? ' selected' : '';
+            return `<option value="${c.val}"${sel}>${c.name}</option>`;
+        }).join('');
+    }
+
+    function renderMatchTable() {
+        const container = document.getElementById('matchCardContainer');
+        if (!container) return;
+        const savedInputs = {};
+        
+        matchesDef.forEach((_, idx) => {
+            for (let s = 1; s <= 5; s++) {
+                const el = document.getElementById(`m_${idx}_s${s}`);
+                if (el) savedInputs[`m_${idx}_s${s}`] = el.value;
+            }
+        });
+
+        const savedFreeA1 = document.getElementById('m_12_d_a1') ? document.getElementById('m_12_d_a1').value : null;
+        const savedFreeA2 = document.getElementById('m_12_d_a2') ? document.getElementById('m_12_d_a2').value : null;
+        const savedFreeB1 = document.getElementById('m_12_d_b1') ? document.getElementById('m_12_d_b1').value : null;
+        const savedFreeB2 = document.getElementById('m_12_d_b2') ? document.getElementById('m_12_d_b2').value : null;
+
+        container.innerHTML = '';
+
+        const pA = {
+            A: getPlayerName('A', 'A'),
+            B: getPlayerName('A', 'B'),
+            C: getPlayerName('A', 'C'),
+            D1: getPlayerName('A', 'D1'),
+            D2: getPlayerName('A', 'D2')
+        };
+        const pB = {
+            X: getPlayerName('B', 'X'),
+            Y: getPlayerName('B', 'Y'),
+            Z: getPlayerName('B', 'Z'),
+            X2: getPlayerName('B', 'X2'),
+            Y2: getPlayerName('B', 'Y2')
+        };
+
+        const fTeamEl = document.getElementById('fixedVorgabeTeam');
+        const fValEl = document.getElementById('fixedVorgabeValue');
+        const fixedTeam = fTeamEl ? fTeamEl.value : 'Keine';
+        const fixedVal = fValEl ? (parseInt(fValEl.value, 10) || 1) : 1;
+
+        matchesDef.forEach((m, idx) => {
+            let nameA = '', nameB = '';
+            let qttrDisplayA = '', qttrDisplayB = '';
+            let recipientText = 'Keine';
+
+            if (qttrVorgabeActive) {
+                if (m.type === 'einzel') {
+                    nameA = pA[m.keyA];
+                    nameB = pB[m.keyB];
+                    let qA = getPlayerQttr('A', m.keyA);
+                    let qB = getPlayerQttr('B', m.keyB);
+                    if (qA > 0) qttrDisplayA = ` <span class="qttr-span">(${qA})</span>`;
+                    if (qB > 0) qttrDisplayB = ` <span class="qttr-span">(${qB})</span>`;
+                    let calculatedVorgabe = calculateQttrVorgabePoints(qA, qB);
+                    if (calculatedVorgabe > 0) {
+                        if (qA < qB) recipientText = `Heim (+${calculatedVorgabe})`;
+                        else if (qB < qA) recipientText = `Gast (+${calculatedVorgabe})`;
+                    }
+                } else if (m.type === 'doppel') {
+                    nameA = `${pA[m.keysA[0]]} / ${pA[m.keysA[1]]}`;
+                    nameB = `${pB[m.keysB[0]]} / ${pB[m.keysB[1]]}`;
+                    let qA1 = getPlayerQttr('A', m.keysA[0]);
+                    let qA2 = getPlayerQttr('A', m.keysA[1]);
+                    let qB1 = getPlayerQttr('B', m.keysB[0]);
+                    let qB2 = getPlayerQttr('B', m.keysB[1]);
+                    let qA = Math.round((qA1 + qA2) / 2);
+                    let qB = Math.round((qB1 + qB2) / 2);
+                    if (qA > 0) qttrDisplayA = ` <span class="qttr-span">(${qA})</span>`;
+                    if (qB > 0) qttrDisplayB = ` <span class="qttr-span">(${qB})</span>`;
+                    let calculatedVorgabe = calculateQttrVorgabePoints(qA, qB);
+                    if (calculatedVorgabe > 0) {
+                        if (qA < qB) recipientText = `Heim (+${calculatedVorgabe})`;
+                        else if (qB < qA) recipientText = `Gast (+${calculatedVorgabe})`;
+                    }
+                } else if (m.type === 'frei') {
+                    let heimChoices = [
+                        { val: 'A', name: pA.A },
+                        { val: 'B', name: pA.B },
+                        { val: 'C', name: pA.C }
+                    ];
+                    if (pA.D1) heimChoices.push({ val: 'D1', name: pA.D1 });
+                    if (pA.D2) heimChoices.push({ val: 'D2', name: pA.D2 });
+
+                    let gastChoices = [
+                        { val: 'X', name: pB.X },
+                        { val: 'Y', name: pB.Y },
+                        { val: 'Z', name: pB.Z }
+                    ];
+                    if (pB.X2) gastChoices.push({ val: 'X2', name: pB.X2 });
+                    if (pB.Y2) gastChoices.push({ val: 'Y2', name: pB.Y2 });
+
+                    let curA1 = savedFreeA1 || 'A';
+                    let curA2 = savedFreeA2 || 'B';
+                    let curB1 = savedFreeB1 || 'X';
+                    let curB2 = savedFreeB2 || 'Y';
+
+                    if (curA1 === curA2) {
+                        let alt = heimChoices.find(c => c.val !== curA1);
+                        if (alt) curA2 = alt.val;
+                    }
+                    if (curB1 === curB2) {
+                        let alt = gastChoices.find(c => c.val !== curB1);
+                        if (alt) curB2 = alt.val;
+                    }
+
+                    let optsA1 = getFilteredOptions(heimChoices, curA1, curA2);
+                    let optsA2 = getFilteredOptions(heimChoices, curA2, curA1);
+                    let optsB1 = getFilteredOptions(gastChoices, curB1, curB2);
+                    let optsB2 = getFilteredOptions(gastChoices, curB2, curB1);
+
+                    nameA = `
+                        <select id="m_12_d_a1" class="table-select">${optsA1}</select> / 
+                        <select id="m_12_d_a2" class="table-select">${optsA2}</select>`;
+                    nameB = `
+                        <select id="m_12_d_b1" class="table-select">${optsB1}</select> / 
+                        <select id="m_12_d_b2" class="table-select">${optsB2}</select>`;
+
+                    let qA1 = getPlayerQttr('A', 'free1');
+                    let qA2 = getPlayerQttr('A', 'free2');
+                    let qB1 = getPlayerQttr('B', 'free1');
+                    let qB2 = getPlayerQttr('B', 'free2');
+                    let qA = Math.round((qA1 + qA2) / 2);
+                    let qB = Math.round((qB1 + qB2) / 2);
+                    if (qA > 0) qttrDisplayA = ` <span class="qttr-span">(${qA})</span>`;
+                    if (qB > 0) qttrDisplayB = ` <span class="qttr-span">(${qB})</span>`;
+                    let calculatedVorgabe = calculateQttrVorgabePoints(qA, qB);
+                    if (calculatedVorgabe > 0) {
+                        if (qA < qB) recipientText = `Heim (+${calculatedVorgabe})`;
+                        else if (qB < qA) recipientText = `Gast (+${calculatedVorgabe})`;
+                    }
+                }
+            } else {
+                if (fixedTeam === 'Heim') {
+                    recipientText = `Heim (+${fixedVal})`;
+                } else if (fixedTeam === 'Gast') {
+                    recipientText = `Gast (+${fixedVal})`;
+                } else {
+                    recipientText = `Keine`;
+                }
+
+                if (m.type === 'einzel') {
+                    nameA = pA[m.keyA];
+                    nameB = pB[m.keyB];
+                } else if (m.type === 'doppel') {
+                    nameA = `${pA[m.keysA[0]]} / ${pA[m.keysA[1]]}`;
+                    nameB = `${pB[m.keysB[0]]} / ${pB[m.keysB[1]]}`;
+                } else if (m.type === 'frei') {
+                    let heimChoices = [
+                        { val: 'A', name: pA.A },
+                        { val: 'B', name: pA.B },
+                        { val: 'C', name: pA.C }
+                    ];
+                    if (pA.D1) heimChoices.push({ val: 'D1', name: pA.D1 });
+                    if (pA.D2) heimChoices.push({ val: 'D2', name: pA.D2 });
+
+                    let gastChoices = [
+                        { val: 'X', name: pB.X },
+                        { val: 'Y', name: pB.Y },
+                        { val: 'Z', name: pB.Z }
+                    ];
+                    if (pB.X2) gastChoices.push({ val: 'X2', name: pB.X2 });
+                    if (pB.Y2) gastChoices.push({ val: 'Y2', name: pB.Y2 });
+
+                    let curA1 = savedFreeA1 || 'A';
+                    let curA2 = savedFreeA2 || 'B';
+                    let curB1 = savedFreeB1 || 'X';
+                    let curB2 = savedFreeB2 || 'Y';
+
+                    if (curA1 === curA2) {
+                        let alt = heimChoices.find(c => c.val !== curA1);
+                        if (alt) curA2 = alt.val;
+                    }
+                    if (curB1 === curB2) {
+                        let alt = gastChoices.find(c => c.val !== curB1);
+                        if (alt) curB2 = alt.val;
+                    }
+
+                    let optsA1 = getFilteredOptions(heimChoices, curA1, curA2);
+                    let optsA2 = getFilteredOptions(heimChoices, curA2, curA1);
+                    let optsB1 = getFilteredOptions(gastChoices, curB1, curB2);
+                    let optsB2 = getFilteredOptions(gastChoices, curB2, curB1);
+
+                    nameA = `
+                        <select id="m_12_d_a1" class="table-select">${optsA1}</select> / 
+                        <select id="m_12_d_a2" class="table-select">${optsA2}</select>`;
+                    nameB = `
+                        <select id="m_12_d_b1" class="table-select">${optsB1}</select> / 
+                        <select id="m_12_d_b2" class="table-select">${optsB2}</select>`;
+                }
+            }
+
+            let vorgabeHtml = `<div class="match-vorgabe-badge" id="m_${idx}_vorgabe">${recipientText}</div>`;
+
+            let card = `
+                <div class="match-card" id="match-card-${idx}">
+                    <div class="match-top-row">
+                        <div class="match-num">#${idx + 1}</div>
+                        <div class="match-players-info">
+                            <div class="player-line"><span class="player-name-a">${nameA}${qttrDisplayA}</span></div>
+                            <span class="player-line-separator">—</span>
+                            <div class="player-line"><span class="player-name-b">${nameB}${qttrDisplayB}</span></div>
+                        </div>
+                        ${vorgabeHtml}
+                        <div class="match-result-box">
+                            <span class="saetze-val" id="m_${idx}_saetze">0 : 0</span>
+                            <span class="punkte-val" id="m_${idx}_punkte">0 : 0</span>
+                        </div>
+                    </div>
+                    <div class="match-satze-row">
+                        ${[1,2,3,4,5].map(s => `
+                            <div class="satz-input-group">
+                                <label>${s}.Satz</label>
+                                <input type="text" class="satz-input-single" id="m_${idx}_s${s}" placeholder="0:0">
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            container.innerHTML += card;
+        });
+
+        if (!savedFreeA1 && !savedFreeA2) {
+            autoSelectGame13IfNewPlayers();
+        }
+
+        ['m_12_d_a1', 'm_12_d_a2', 'm_12_d_b1', 'm_12_d_b2'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', () => {
+                    checkAdminLockOnInput();
+                    renderMatchTable();
+                });
+            }
+        });
+
+        container.querySelectorAll('.satz-input-single').forEach(input => {
+            input.addEventListener('input', () => {
+                checkAdminLockOnInput();
+                calculateMatches();
+            });
+            input.addEventListener('blur', function() {
+                let formatted = formatSatzInput(this.value);
+                if (formatted !== this.value) {
+                    this.value = formatted;
+                    checkAdminLockOnInput();
+                    calculateMatches();
+                }
+            });
+        });
+
+        Object.keys(savedInputs).forEach(id => {
+            const el = document.getElementById(id);
+            if (el && savedInputs[id] !== undefined) el.value = savedInputs[id];
+        });
+
+        calculateMatches();
+    }
+
+    function isSetWon(pA, pB) {
+        if (pA >= 11 && (pA - pB) >= 2) return 'A';
+        if (pB >= 11 && (pB - pA) >= 2) return 'B';
+        return null;
+    }
+
+    function parseSatzScore(str) {
+        if (!str) return null;
+        let formatted = formatSatzInput(str);
+        const parts = formatted.trim().split(':');
+        if (parts.length !== 2) return null;
+        const valA = parseInt(parts[0].trim(), 10);
+        const valB = parseInt(parts[1].trim(), 10);
+        if (isNaN(valA) || isNaN(valB)) return null;
+        return { valA, valB };
+    }
+
+    function calculateMatches() {
+        let totalPunkteA = 0, totalPunkteB = 0;
+        let totalSaetzeA = 0, totalSaetzeB = 0;
+        let previousMatchesComplete = true; 
+        let overallWinnerReached = false;
+
+        matchesDef.forEach((_, idx) => {
+            let saetzeA = 0, saetzeB = 0;
+            let matchFinished = false;
+            let hasAnyInputs = false;
+            let hasIncompleteInput = false;
+
+            for (let s = 1; s <= 5; s++) {
+                let input = document.getElementById(`m_${idx}_s${s}`);
+                let rawVal = input ? input.value.trim() : '';
+
+                if (rawVal !== '') {
+                    hasAnyInputs = true;
+                    let parsed = parseSatzScore(rawVal);
+                    if (parsed) {
+                        let winner = isSetWon(parsed.valA, parsed.valB);
+                        if (winner === 'A') saetzeA++;
+                        if (winner === 'B') saetzeB++;
+                        if (winner === null) {
+                            hasIncompleteInput = true;
+                        }
+                    } else {
+                        hasIncompleteInput = true;
+                    }
+                }
+
+                if (saetzeA === 3 || saetzeB === 3) {
+                    matchFinished = true;
+                    break;
+                }
+            }
+
+            const saetzeCell = document.getElementById(`m_${idx}_saetze`);
+            const punkteCell = document.getElementById(`m_${idx}_punkte`);
+            if (saetzeCell) saetzeCell.innerText = `${saetzeA} : ${saetzeB}`;
+            
+            let pktA = saetzeA === 3 ? 1 : 0;
+            let pktB = saetzeB === 3 ? 1 : 0;
+            if (punkteCell) punkteCell.innerText = `${pktA} : ${pktB}`;
+
+            const card = document.getElementById(`match-card-${idx}`);
+            if (card) {
+                card.classList.remove('match-completed', 'match-error');
+
+                if (overallWinnerReached) {
+                    if (hasAnyInputs) {
+                        card.classList.add('match-error');
+                    }
+                } else if (matchFinished && !hasIncompleteInput) {
+                    if (previousMatchesComplete) {
+                        card.classList.add('match-completed');
+                        totalSaetzeA += saetzeA;
+                        totalSaetzeB += saetzeB;
+                        totalPunkteA += pktA;
+                        totalPunkteB += pktB;
+
+                        if (totalPunkteA >= 7 || totalPunkteB >= 7) {
+                            overallWinnerReached = true;
+                        }
+                    } else {
+                        card.classList.add('match-error');
+                    }
+                } else {
+                    if (hasAnyInputs) {
+                        card.classList.add('match-error');
+                    }
+                    previousMatchesComplete = false;
+                }
+            }
+        });
+
+        const totalSaetzeCell = document.getElementById('totalSaetzeCell');
+        const totalPunkteCell = document.getElementById('totalPunkteCell');
+        if (totalSaetzeCell) totalSaetzeCell.innerText = `${totalSaetzeA} : ${totalSaetzeB}`;
+        if (totalPunkteCell) totalPunkteCell.innerText = `${totalPunkteA} : ${totalPunkteB}`;
+
+        const endSaetze = document.getElementById('endSaetze');
+        const endPunkte = document.getElementById('endPunkte');
+        if (endSaetze) endSaetze.value = `${totalSaetzeA} : ${totalSaetzeB}`;
+        if (endPunkte) endPunkte.value = `${totalPunkteA} : ${totalPunkteB}`;
+
+        const heim = document.getElementById('heimName').value.trim() || 'Heimmannschaft';
+        const gast = document.getElementById('gastName').value.trim() || 'Gastmannschaft';
+        const siegerField = document.getElementById('sieger');
+
+        if (siegerField) {
+            if (totalPunkteA >= 7) {
+                siegerField.value = heim;
+            } else if (totalPunkteB >= 7) {
+                siegerField.value = gast;
+            } else {
+                siegerField.value = "Offen";
+            }
+        }
+    }
+
+    function resizeCanvas(canvas) {
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(canvas, 0, 0);
+
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, canvas.width, canvas.height);
+    }
+
+    function initCanvas(id, flagName) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        resizeCanvas(canvas);
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX;
+            let clientY = e.clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function startDraw(e) { 
+            e.preventDefault();
+            checkAdminLockOnInput();
+            drawing = true; 
+            if (flagName === 'A') sigSignedA = true;
+            if (flagName === 'B') sigSignedB = true;
+            ctx.beginPath(); 
+            let p = getPos(e); 
+            ctx.moveTo(p.x, p.y); 
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            e.preventDefault();
+            let p = getPos(e);
+            ctx.lineTo(p.x, p.y);
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke();
+        }
+
+        function stopDraw(e) { 
+            if (drawing) {
+                if (e) e.preventDefault();
+                drawing = false; 
+            }
+        }
+
+        canvas.addEventListener('pointerdown', startDraw, false);
+        canvas.addEventListener('pointermove', draw, false);
+        canvas.addEventListener('pointerup', stopDraw, false);
+        canvas.addEventListener('pointerleave', stopDraw, false);
+    }
+
+    function clearCanvas(id) {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (id === 'sigCanvasA') sigSignedA = false;
+        if (id === 'sigCanvasB') sigSignedB = false;
+    }
+
+    function validateAndFinish() {
+        const alertBox = document.getElementById('validationAlert');
+        alertBox.style.display = 'none';
+        alertBox.innerHTML = '';
+
+        const endPunkteVal = document.getElementById('endPunkte').value.split(':').map(x => parseInt(x.trim()));
+        const hasSevenPoints = (endPunkteVal[0] >= 7 || endPunkteVal[1] >= 7);
+        const spielende = document.getElementById('spielende').value.trim();
+
+        let errors = [];
+
+        if (!hasSevenPoints) {
+            errors.push("Eine Mannschaft muss genau/mindestens 7 Punkte erreicht haben.");
+        }
+        if (!spielende) {
+            errors.push("Bitte die Uhrzeit bei 'Spielende' eintragen.");
+        }
+        if (!sigSignedA) {
+            errors.push("Unterschrift der Heimmannschaft fehlt.");
+        }
+        if (!sigSignedB) {
+            errors.push("Unterschrift der Gastmannschaft fehlt.");
+        }
+
+        if (errors.length > 0) {
+            alertBox.innerHTML = "<strong>Abschluss nicht möglich:</strong><br>• " + errors.join("<br>• ");
+            alertBox.style.display = 'block';
+            isFormCompleted = false;
+        } else {
+            isFormCompleted = true;
+            document.getElementById('btnAbschliessen').style.display = 'none';
+            document.getElementById('btnPdfPrint').style.display = 'inline-block';
+        }
+    }
+
+    function exportToPDF() {
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'block');
+        document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = 'none');
+        
+        const manualCard = document.getElementById('manualVorgabeCard');
+        if (manualCard) manualCard.style.display = 'none';
+
+        ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+            const field = document.getElementById(id);
+            if (field && !field.value.trim()) {
+                field.closest('.form-group').style.display = 'none';
+            }
+        });
+
+        const element = document.getElementById('pdfContent');
+        element.classList.add('pdf-export-mode');
+
+        resizeCanvas(document.getElementById('sigCanvasA'));
+        resizeCanvas(document.getElementById('sigCanvasB'));
+
+        const opt = {
+            margin:       0,
+            filename:     `Spielbericht_${document.getElementById('datum').value || 'Wesermarschpokal'}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).outputPdf('blob').then((pdfBlob) => {
+            const blobURL = URL.createObjectURL(pdfBlob);
+            window.open(blobURL, '_blank');
+
+            applyQttrUIVisibility();
+            ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) {
+                    field.closest('.form-group').style.display = '';
+                }
+            });
+
+            element.classList.remove('pdf-export-mode');
+            document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
+            switchTab('tab3');
+        }).catch(err => {
+            console.error("PDF Export Fehler:", err);
+            applyQttrUIVisibility();
+            ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) {
+                    field.closest('.form-group').style.display = '';
+                }
+            });
+            element.classList.remove('pdf-export-mode');
+            document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
+            switchTab('tab3');
+            alert('Fehler beim Öffnen des PDFs aufgetreten.');
+        });
+    }
+
+    function getGameData() {
+        const spieleData = matchesDef.map((_, idx) => {
+            const saetze = [];
+            for (let s = 1; s <= 5; s++) {
+                const el = document.getElementById(`m_${idx}_s${s}`);
+                saetze.push(el ? el.value : '');
+            }
+            return saetze;
+        });
+
+        const canvasA = document.getElementById('sigCanvasA');
+        const canvasB = document.getElementById('sigCanvasB');
+
+        return {
+            version: "1.32",
+            stammdaten: {
+                spielklasse: document.getElementById('spielklasse').value || 'Erwachsene',
+                datum: document.getElementById('datum').value || '',
+                uhrzeit: document.getElementById('uhrzeit').value || '',
+                heimName: document.getElementById('heimName').value || '',
+                gastName: document.getElementById('gastName').value || '',
+                spielerA_A: document.getElementById('spielerA_A').value || '',
+                spielerA_B: document.getElementById('spielerA_B').value || '',
+                spielerA_C: document.getElementById('spielerA_C').value || '',
+                spielerA_D1: document.getElementById('spielerA_D1').value || '',
+                spielerA_D2: document.getElementById('spielerA_D2').value || '',
+                spielerB_A: document.getElementById('spielerB_A').value || '',
+                spielerB_B: document.getElementById('spielerB_B').value || '',
+                spielerB_C: document.getElementById('spielerB_C').value || '',
+                spielerB_D1: document.getElementById('spielerB_D1').value || '',
+                spielerB_D2: document.getElementById('spielerB_D2').value || '',
+                fixedVorgabeTeam: document.getElementById('fixedVorgabeTeam') ? document.getElementById('fixedVorgabeTeam').value : 'Keine',
+                fixedVorgabeValue: document.getElementById('fixedVorgabeValue') ? document.getElementById('fixedVorgabeValue').value : '1'
+            },
+            freiesDoppel: {
+                a1: document.getElementById('m_12_d_a1') ? document.getElementById('m_12_d_a1').value : 'A',
+                a2: document.getElementById('m_12_d_a2') ? document.getElementById('m_12_d_a2').value : 'B',
+                b1: document.getElementById('m_12_d_b1') ? document.getElementById('m_12_d_b1').value : 'X',
+                b2: document.getElementById('m_12_d_b2') ? document.getElementById('m_12_d_b2').value : 'Y'
+            },
+            abschluss: {
+                spielende: document.getElementById('spielende').value || ''
+            },
+            unterschriften: {
+                sigA: canvasA ? canvasA.toDataURL() : '',
+                sigB: canvasB ? canvasB.toDataURL() : '',
+                signedA: sigSignedA,
+                signedB: sigSignedB
+            },
+            spiele: spieleData
+        };
+    }
+
+    function autoSave() {
+        if (isLoading) return;
+        try {
+            const gameData = getGameData();
+            localStorage.setItem('wesermarsch_pokal_autosave', JSON.stringify(gameData));
+        } catch (e) {
+            console.error("Autosave fehlgeschlagen:", e);
+        }
+    }
+
+    function populateFormData(data) {
+        isLoading = true;
+        try {
+            if (data.stammdaten) {
+                const st = data.stammdaten;
+                document.getElementById('spielklasse').value = st.spielklasse || 'Erwachsene';
+                document.getElementById('datum').value = st.datum || '';
+                document.getElementById('uhrzeit').value = st.uhrzeit || '';
+                
+                updateClubDropdowns();
+                document.getElementById('heimName').value = st.heimName || '';
+                updatePlayerDropdowns();
+                document.getElementById('gastName').value = st.gastName || '';
+                updatePlayerDropdowns();
+
+                document.getElementById('spielerA_A').value = st.spielerA_A || '';
+                document.getElementById('spielerA_B').value = st.spielerA_B || '';
+                document.getElementById('spielerA_C').value = st.spielerA_C || '';
+                if (document.getElementById('spielerA_D1')) document.getElementById('spielerA_D1').value = st.spielerA_D1 || '';
+                if (document.getElementById('spielerA_D2')) document.getElementById('spielerA_D2').value = st.spielerA_D2 || '';
+                document.getElementById('spielerB_A').value = st.spielerB_A || '';
+                document.getElementById('spielerB_B').value = st.spielerB_B || '';
+                document.getElementById('spielerB_C').value = st.spielerB_C || '';
+                if (document.getElementById('spielerB_D1')) document.getElementById('spielerB_D1').value = st.spielerB_D1 || '';
+                if (document.getElementById('spielerB_D2')) document.getElementById('spielerB_D2').value = st.spielerB_D2 || '';
+                if (document.getElementById('fixedVorgabeTeam') && st.fixedVorgabeTeam) document.getElementById('fixedVorgabeTeam').value = st.fixedVorgabeTeam;
+                if (document.getElementById('fixedVorgabeValue') && st.fixedVorgabeValue) document.getElementById('fixedVorgabeValue').value = st.fixedVorgabeValue;
+            }
+
+            renderMatchTable();
+
+            if (data.spiele && Array.isArray(data.spiele)) {
+                data.spiele.forEach((item, idx) => {
+                    const saetze = Array.isArray(item) ? item : (item.saetze || []);
+                    if (Array.isArray(saetze)) {
+                        saetze.forEach((sVal, sIdx) => {
+                            const sNum = sIdx + 1;
+                            const el = document.getElementById(`m_${idx}_s${sNum}`);
+                            if (el) {
+                                if (typeof sVal === 'string') {
+                                    el.value = sVal;
+                                } else {
+                                    el.value = '';
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            if (data.freiesDoppel) {
+                if (document.getElementById('m_12_d_a1')) document.getElementById('m_12_d_a1').value = data.freiesDoppel.a1 || 'A';
+                if (document.getElementById('m_12_d_a2')) document.getElementById('m_12_d_a2').value = data.freiesDoppel.a2 || 'B';
+                if (document.getElementById('m_12_d_b1')) document.getElementById('m_12_d_b1').value = data.freiesDoppel.b1 || 'X';
+                if (document.getElementById('m_12_d_b2')) document.getElementById('m_12_d_b2').value = data.freiesDoppel.b2 || 'Y';
+            }
+
+            if (data.abschluss && data.abschluss.spielende) {
+                document.getElementById('spielende').value = data.abschluss.spielende;
+            }
+
+            if (data.unterschriften) {
+                if (data.unterschriften.sigA) {
+                    const canvasA = document.getElementById('sigCanvasA');
+                    const ctxA = canvasA.getContext('2d');
+                    const imgA = new Image();
+                    imgA.onload = function() {
+                        ctxA.clearRect(0, 0, canvasA.width, canvasA.height);
+                        ctxA.drawImage(imgA, 0, 0);
+                    };
+                    imgA.src = data.unterschriften.sigA;
+                    sigSignedA = data.unterschriften.signedA || true;
+                }
+                if (data.unterschriften.sigB) {
+                    const canvasB = document.getElementById('sigCanvasB');
+                    const ctxB = canvasB.getContext('2d');
+                    const imgB = new Image();
+                    imgB.onload = function() {
+                        ctxB.clearRect(0, 0, canvasB.width, canvasB.height);
+                        ctxB.drawImage(imgB, 0, 0);
+                    };
+                    imgB.src = data.unterschriften.sigB;
+                    sigSignedB = data.unterschriften.signedB || true;
+                }
+            }
+
+            calculateMatches();
+        } catch (e) {
+            console.error("Fehler beim Laden:", e);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    // AUTOMATISCHER EXCEL-IMPORT IM HINTERGRUND BEI SEITENAUFRUF
+    function loadExcelFromGitHub() {
+        fetch('spielerliste.xlsx')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Datei spielerliste.xlsx nicht gefunden.');
+                }
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => {
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                const roster = [];
+                let startRow = 0;
+                if (json.length > 0) {
+                    const firstRowStr = String(json[0][0] || '').toLowerCase();
+                    if (firstRowStr.includes('verein') || firstRowStr.includes('club') || firstRowStr.includes('mannschaft')) {
+                        startRow = 1;
+                    }
+                }
+
+                for (let i = startRow; i < json.length; i++) {
+                    const row = json[i];
+                    if (row && row.length >= 4) {
+                        const verein = row[0] !== undefined ? String(row[0]).trim() : '';
+                        const spielklasse = row[1] !== undefined ? String(row[1]).trim() : '';
+                        const nachname = row[2] !== undefined ? String(row[2]).trim() : '';
+                        const vorname = row[3] !== undefined ? String(row[3]).trim() : '';
+                        const qttr = row[4] !== undefined ? parseFloat(row[4]) || 0 : 0;
+
+                        if (verein && (nachname || vorname)) {
+                            const spieler = nachname && vorname ? `${nachname}, ${vorname}` : (nachname || vorname);
+                            roster.push({ verein, spielklasse, spieler, qttr });
+                        }
+                    }
+                }
+
+                if (roster.length > 0) {
+                    localStorage.setItem('wesermarsch_pokal_roster', JSON.stringify(roster));
+                    updateAllDropdowns();
+                    renderMatchTable();
+                    console.log(`Erfolgreich ${roster.length} Spielereinträge automatisch geladen.`);
+                }
+            })
+            .catch(err => {
+                console.warn("Automatischer Excel-Import im Hintergrund fehlgeschlagen:", err);
+            });
+    }
+
+    function getFilteredRoster() {
+        const rosterJson = localStorage.getItem('wesermarsch_pokal_roster');
+        if (!rosterJson) return [];
+        try {
+            const roster = JSON.parse(rosterJson);
+            const selectedSpielklasse = document.getElementById('spielklasse').value.trim().toLowerCase();
+
+            return roster.filter(item => {
+                const sk = item.spielklasse.toLowerCase();
+                if (selectedSpielklasse === 'erwachsene') {
+                    return sk === 'erwachsene' || sk === 'damen';
+                } else if (selectedSpielklasse === 'jugend 19') {
+                    return sk.includes('jugend') || sk.includes('mädchen');
+                } else if (selectedSpielklasse === 'jugend 15') {
+                    return sk.includes('jugend 15') || sk.includes('jugend 13') || sk.includes('mädchen 15') || sk.includes('mädchen 13');
+                }
+                return sk.includes(selectedSpielklasse);
+            });
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function romanToInt(roman) {
+        if (!roman) return 0;
+        const r = roman.toUpperCase();
+        if (r === 'I') return 1;
+        if (r === 'II') return 2;
+        if (r === 'III') return 3;
+        if (r === 'IV') return 4;
+        if (r === 'V') return 5;
+        if (r === 'VI') return 6;
+        if (r === 'VII') return 7;
+        if (r === 'VIII') return 8;
+        if (r === 'IX') return 9;
+        if (r === 'X') return 10;
+        return parseInt(r, 10) || 0;
+    }
+
+    function parseTeam(str) {
+        if (!str) return { base: '', isDS: false, number: 1, hasExplicitNumber: false };
+        let s = str.trim();
+        let upper = s.toUpperCase();
+        let isDS = upper.includes('DS');
+        let tokens = s.split(/\s+/);
+        let cleanTokens = [];
+        let number = 1;
+        let foundNumber = false;
+
+        for (let i = 0; i < tokens.length; i++) {
+            let t = tokens[i];
+            let tUpper = t.toUpperCase();
+            if (tUpper !== 'DS') {
+                let numVal = romanToInt(t);
+                if (numVal > 0) {
+                    number = numVal;
+                    foundNumber = true;
+                } else {
+                    cleanTokens.push(t);
+                }
+            }
+        }
+        return { base: cleanTokens.join(' ').toLowerCase(), isDS: isDS, number: number, hasExplicitNumber: foundNumber };
+    }
+
+    function isTeamAllowed(enteredStr, candidateStr) {
+        if (!enteredStr || !candidateStr) return false;
+        const entered = parseTeam(enteredStr);
+        const candidate = parseTeam(candidateStr);
+        if (entered.base !== candidate.base) return false;
+        if (!entered.isDS) {
+            if (candidate.isDS) return false;
+            return candidate.number >= entered.number;
+        } else {
+            if (!candidate.isDS) return false;
+            return entered.hasExplicitNumber ? candidate.number >= entered.number : true;
+        }
+    }
+
+    function updateAllDropdowns() {
+        updateClubDropdowns();
+        updatePlayerDropdowns();
+    }
+
+    function updateClubDropdowns() {
+        const heimSelect = document.getElementById('heimName');
+        const gastSelect = document.getElementById('gastName');
+        if (!heimSelect || !gastSelect) return;
+
+        const heimVal = heimSelect.value;
+        const gastVal = gastSelect.value;
+
+        heimSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
+        gastSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
+
+        const filteredRoster = getFilteredRoster();
+        const selectedSpielklasse = document.getElementById('spielklasse').value.trim();
+
+        // Extrahiere eindeutige Vereine und prüfe auf spezifische Spalten-Zusätze (z.B. Jugend 15 / Jugend 13)
+        const clubMap = new Map();
+        filteredRoster.forEach(item => {
+            let baseClub = item.verein;
+            let skLower = item.spielklasse.toLowerCase();
+            let suffix = '';
+
+            if (selectedSpielklasse === 'Jugend 19') {
+                if (skLower.includes('jugend 15') || skLower.includes('mädchen 15')) {
+                    suffix = ' (Jugend 15)';
+                } else if (skLower.includes('jugend 13') || skLower.includes('mädchen 13')) {
+                    suffix = ' (Jugend 13)';
+                }
+            } else if (selectedSpielklasse === 'Jugend 15') {
+                if (skLower.includes('jugend 13') || skLower.includes('mädchen 13')) {
+                    suffix = ' (Jugend 13)';
+                }
+            }
+
+            let displayClub = baseClub + suffix;
+            if (!clubMap.has(displayClub)) {
+                clubMap.set(displayClub, baseClub);
+            }
+        });
+
+        const sortedClubs = [...clubMap.keys()].sort();
+
+        sortedClubs.forEach(club => {
+            if (club !== gastVal) {
+                const optHeim = document.createElement('option');
+                optHeim.value = club;
+                optHeim.textContent = club;
+                if (club === heimVal) optHeim.selected = true;
+                heimSelect.appendChild(optHeim);
+            }
+            if (club !== heimVal) {
+                const optGast = document.createElement('option');
+                optGast.value = club;
+                optGast.textContent = club;
+                if (club === gastVal) optGast.selected = true;
+                gastSelect.appendChild(optGast);
+            }
+        });
+    }
+
+    function updatePlayerDropdowns() {
+        const filteredRoster = getFilteredRoster();
+        const heimClubRaw = document.getElementById('heimName').value.trim().replace(/\s*\([^)]*\)/g, '');
+        const gastClubRaw = document.getElementById('gastName').value.trim().replace(/\s*\([^)]*\)/g, '');
+
+        const heimPlayersAll = filteredRoster.filter(item => isTeamAllowed(heimClubRaw, item.verein)).map(item => item.spieler);
+        const uniqueHeimPlayers = heimPlayersAll.filter((item, index) => heimPlayersAll.indexOf(item) === index);
+
+        const heimSelects = [
+            { id: 'spielerA_A', defaultText: 'Bitte wählen' },
+            { id: 'spielerA_B', defaultText: 'Bitte wählen' },
+            { id: 'spielerA_C', defaultText: 'Bitte wählen' },
+            { id: 'spielerA_D1', defaultText: 'Keiner (optional)' },
+            { id: 'spielerA_D2', defaultText: 'Keiner (optional)' }
+        ];
+
+        heimSelects.forEach((item, idx) => {
+            const selectEl = document.getElementById(item.id);
+            if (!selectEl) return;
+            const currentVal = selectEl.value;
+
+            selectEl.innerHTML = `<option value="">${item.defaultText}</option>`;
+            uniqueHeimPlayers.forEach(p => {
+                let alreadySelected = false;
+                heimSelects.forEach((other, otherIdx) => {
+                    if (otherIdx !== idx) {
+                        const otherEl = document.getElementById(other.id);
+                        if (otherEl && otherEl.value === p) alreadySelected = true;
+                    }
+                });
+
+                if (!alreadySelected || p === currentVal) {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    if (p === currentVal) opt.selected = true;
+                    selectEl.appendChild(opt);
+                }
+            });
+        });
+
+        const gastPlayersAll = filteredRoster.filter(item => isTeamAllowed(gastClubRaw, item.verein)).map(item => item.spieler);
+        const uniqueGastPlayers = gastPlayersAll.filter((item, index) => gastPlayersAll.indexOf(item) === index);
+
+        const gastSelects = [
+            { id: 'spielerB_A', defaultText: 'Bitte wählen' },
+            { id: 'spielerB_B', defaultText: 'Bitte wählen' },
+            { id: 'spielerB_C', defaultText: 'Bitte wählen' },
+            { id: 'spielerB_D1', defaultText: 'Keiner (optional)' },
+            { id: 'spielerB_D2', defaultText: 'Keiner (optional)' }
+        ];
+
+        gastSelects.forEach((item, idx) => {
+            const selectEl = document.getElementById(item.id);
+            if (!selectEl) return;
+            const currentVal = selectEl.value;
+
+            selectEl.innerHTML = `<option value="">${item.defaultText}</option>`;
+            uniqueGastPlayers.forEach(p => {
+                let alreadySelected = false;
+                gastSelects.forEach((other, otherIdx) => {
+                    if (otherIdx !== idx) {
+                        const otherEl = document.getElementById(other.id);
+                        if (otherEl && otherEl.value === p) alreadySelected = true;
+                    }
+                });
+
+                if (!alreadySelected || p === currentVal) {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    if (p === currentVal) opt.selected = true;
+                    selectEl.appendChild(opt);
+                }
+            });
+        });
+    }
+
+    function resetGame() {
+        if (!confirm('Möchten Sie das gesamte Spiel wirklich zurücksetzen? Alle bisherigen Spielstände und Eingaben gehen verloren.')) {
+            return;
+        }
+        isFormCompleted = false;
+        localStorage.removeItem('wesermarsch_pokal_autosave');
+        document.getElementById('pokalForm').reset();
+        clearCanvas('sigCanvasA');
+        clearCanvas('sigCanvasB');
+        document.getElementById('btnAbschliessen').style.display = 'inline-block';
+        document.getElementById('btnPdfPrint').style.display = 'none';
+        document.getElementById('validationAlert').style.display = 'none';
+        updateAllDropdowns();
+        renderMatchTable();
+        switchTab('tab1');
+        document.getElementById('drawerMenu').classList.remove('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const savedQttrSetting = localStorage.getItem('wesermarsch_qttr_vorgabe');
+            if (savedQttrSetting === 'true') {
+                qttrVorgabeActive = true;
+            }
+
+            const savedStepErv = localStorage.getItem('wesermarsch_step_erwachsene');
+            if (savedStepErv) stepErwachsene = parseInt(savedStepErv, 10) || 35;
+            const savedStepJ19 = localStorage.getItem('wesermarsch_step_jugend19');
+            if (savedStepJ19) stepJugend19 = parseInt(savedStepJ19, 10) || 35;
+            const savedStepJ15 = localStorage.getItem('wesermarsch_step_jugend15');
+            if (savedStepJ15) stepJugend15 = parseInt(savedStepJ15, 10) || 35;
+            const savedMaxVorgabe = localStorage.getItem('wesermarsch_max_vorgabe');
+            if (savedMaxVorgabe) maxVorgabe = parseInt(savedMaxVorgabe, 10) || 6;
+
+            applyQttrUIVisibility();
+            updatePdfFooterHint();
+
+            loadExcelFromGitHub();
+
+            const burgerBtn = document.getElementById('burgerBtn');
+            const drawerMenu = document.getElementById('drawerMenu');
+            if (burgerBtn && drawerMenu) {
+                burgerBtn.addEventListener('pointerdown', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    drawerMenu.classList.toggle('active');
+                });
+                document.addEventListener('pointerdown', (e) => {
+                    if (!drawerMenu.contains(e.target) && e.target !== burgerBtn) {
+                        drawerMenu.classList.remove('active');
+                    }
+                });
+            }
+
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.remove('active');
+                    }
+                });
+            });
+
+            document.getElementById('btnAdminLogin').addEventListener('click', openAdminModal);
+            document.getElementById('btnSettings').addEventListener('click', openSettingsModal);
+            document.getElementById('btnResetGame').addEventListener('click', resetGame);
+
+            const pokalForm = document.getElementById('pokalForm');
+            if (pokalForm) {
+                pokalForm.addEventListener('input', (e) => {
+                    checkAdminLockOnInput();
+                    autoSave();
+                    if (e && (e.target.id === 'fixedVorgabeTeam' || e.target.id === 'fixedVorgabeValue')) {
+                        renderMatchTable();
+                    }
+                });
+                pokalForm.addEventListener('change', (e) => {
+                    checkAdminLockOnInput();
+                    autoSave();
+                    if (e && (e.target.id === 'fixedVorgabeTeam' || e.target.id === 'fixedVorgabeValue')) {
+                        renderMatchTable();
+                    }
+                });
+            }
+
+            updateAllDropdowns();
+            renderMatchTable();
+
+            const savedAutoSave = localStorage.getItem('wesermarsch_pokal_autosave');
+            if (savedAutoSave) {
+                if (confirm('Es wurde ein nicht abgeschlossener Spielstand im Browser gefunden. Möchten Sie diesen wiederherstellen?')) {
+                    const data = JSON.parse(savedAutoSave);
+                    populateFormData(data);
+                }
+            }
+
+            document.getElementById('btn-tab1').addEventListener('click', () => switchTab('tab1'));
+            document.getElementById('btn-tab2').addEventListener('click', () => switchTab('tab2'));
+            document.getElementById('btn-tab3').addEventListener('click', () => switchTab('tab3'));
+
+            document.getElementById('go-tab2').addEventListener('click', () => switchTab('tab2'));
+            document.getElementById('back-tab1').addEventListener('click', () => switchTab('tab1'));
+            document.getElementById('go-tab3').addEventListener('click', () => switchTab('tab3'));
+            document.getElementById('back-tab2').addEventListener('click', () => switchTab('tab2'));
+
+            document.getElementById('spielklasse').addEventListener('change', () => {
+                checkAdminLockOnInput();
+                updateAllDropdowns();
+                renderMatchTable();
+            });
+
+            ['heimName', 'gastName'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', () => {
+                        checkAdminLockOnInput();
+                        updateClubDropdowns();
+                        updatePlayerDropdowns();
+                        renderMatchTable();
+                    });
+                }
+            });
+
+            ['spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2',
+             'spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', () => {
+                        checkAdminLockOnInput();
+                        updatePlayerDropdowns();
+                        renderMatchTable();
+                    });
+                }
+            });
+
+            document.getElementById('clearCanvasA').addEventListener('click', () => { clearCanvas('sigCanvasA'); checkAdminLockOnInput(); autoSave(); });
+            document.getElementById('clearCanvasB').addEventListener('click', () => { clearCanvas('sigCanvasB'); checkAdminLockOnInput(); autoSave(); });
+
+            document.getElementById('btnAbschliessen').addEventListener('click', validateAndFinish);
+            document.getElementById('btnPdfPrint').addEventListener('click', exportToPDF);
+
+            window.addEventListener('resize', () => {
+                resizeCanvas(document.getElementById('sigCanvasA'));
+                resizeCanvas(document.getElementById('sigCanvasB'));
+            });
+
+            initCanvas('sigCanvasA', 'A');
+            initCanvas('sigCanvasB', 'B');
+
+        } catch (err) {
+            console.error("Initialisierungsfehler:", err);
+        }
+    });
+</script>
+
+</body>
+</html>
