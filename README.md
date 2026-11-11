@@ -186,7 +186,7 @@
             box-sizing: border-box;
             font-size: 0.9rem;
             background-color: #fff;
-            -webkit-appearance: none; /* Safari Fix für Select/Input Darstellungen */
+            -webkit-appearance: none;
         }
 
         .card {
@@ -430,7 +430,7 @@
             cursor: crosshair;
             width: 100%;
             height: 120px;
-            touch-action: none; /* KRITISCH für Safari/iOS: Verhindert Scrollen beim Zeichnen */
+            touch-action: none;
             -webkit-user-select: none;
             display: block;
         }
@@ -650,14 +650,11 @@
             <span></span>
         </button>
         <div class="drawer-menu" id="drawerMenu">
-            <button type="button" class="drawer-btn" id="btnLoadExcel">👥 Spieler laden</button>
             <button type="button" class="drawer-btn" id="btnAdminLogin">🔒 Admin</button>
             <button type="button" class="drawer-btn" id="btnSettings" style="display: none;">⚙️ Einstellungen</button>
             <button type="button" class="drawer-btn danger" id="btnResetGame">🔄 Spiel zurücksetzen</button>
         </div>
     </div>
-    <!-- File-Input für Excel -->
-    <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" style="display: none;">
 
     <div class="header-print">
         <div class="header-title">
@@ -757,7 +754,7 @@
         <!-- OBERFLÄCHE 2: SPIELBERICHT -->
         <div id="tab2" class="tab-content">
             <div id="matchCardContainer">
-                <!-- Dynamisch generierte Begegnungs-Karten für mobile Optimierung -->
+                <!-- Dynamisch generierte Begegnungs-Karten -->
             </div>
             
             <div class="summary-card">
@@ -1188,6 +1185,17 @@
         }
     }
 
+    // Hilfsfunktion zur Generierung von Options mit Ausschluss des jeweils gewählten Partners
+    function getFilteredOptions(choices, selectedVal, excludedVal) {
+        return choices.map(c => {
+            if (c.val === excludedVal && c.val !== selectedVal) {
+                return '';
+            }
+            let sel = (c.val === selectedVal) ? ' selected' : '';
+            return `<option value="${c.val}"${sel}>${c.name}</option>`;
+        }).join('');
+    }
+
     function renderMatchTable() {
         const container = document.getElementById('matchCardContainer');
         if (!container) return;
@@ -1262,37 +1270,49 @@
                         else if (qB < qA) recipientText = `Gast (+${calculatedVorgabe})`;
                     }
                 } else if (m.type === 'frei') {
-                    let optD1_A = pA.D1 ? `<option value="D1">${pA.D1}</option>` : '';
-                    let optD2_A = pA.D2 ? `<option value="D2">${pA.D2}</option>` : '';
-                    let optD1_B = pB.X2 ? `<option value="X2">${pB.X2}</option>` : '';
-                    let optD2_B = pB.Y2 ? `<option value="Y2">${pB.Y2}</option>` : '';
+                    let heimChoices = [
+                        { val: 'A', name: pA.A },
+                        { val: 'B', name: pA.B },
+                        { val: 'C', name: pA.C }
+                    ];
+                    if (pA.D1) heimChoices.push({ val: 'D1', name: pA.D1 });
+                    if (pA.D2) heimChoices.push({ val: 'D2', name: pA.D2 });
+
+                    let gastChoices = [
+                        { val: 'X', name: pB.X },
+                        { val: 'Y', name: pB.Y },
+                        { val: 'Z', name: pB.Z }
+                    ];
+                    if (pB.X2) gastChoices.push({ val: 'X2', name: pB.X2 });
+                    if (pB.Y2) gastChoices.push({ val: 'Y2', name: pB.Y2 });
+
+                    let curA1 = savedFreeA1 || 'A';
+                    let curA2 = savedFreeA2 || 'B';
+                    let curB1 = savedFreeB1 || 'X';
+                    let curB2 = savedFreeB2 || 'Y';
+
+                    // Konflikt-Vermeidung falls identisch
+                    if (curA1 === curA2) {
+                        let alt = heimChoices.find(c => c.val !== curA1);
+                        if (alt) curA2 = alt.val;
+                    }
+                    if (curB1 === curB2) {
+                        let alt = gastChoices.find(c => c.val !== curB1);
+                        if (alt) curB2 = alt.val;
+                    }
+
+                    let optsA1 = getFilteredOptions(heimChoices, curA1, curA2);
+                    let optsA2 = getFilteredOptions(heimChoices, curA2, curA1);
+                    let optsB1 = getFilteredOptions(gastChoices, curB1, curB2);
+                    let optsB2 = getFilteredOptions(gastChoices, curB2, curB1);
 
                     nameA = `
-                        <select id="m_12_d_a1" class="table-select">
-                            <option value="A">${pA.A}</option>
-                            <option value="B">${pA.B}</option>
-                            <option value="C">${pA.C}</option>
-                            ${optD1_A} ${optD2_A}
-                        </select> / 
-                        <select id="m_12_d_a2" class="table-select">
-                            <option value="B">${pA.B}</option>
-                            <option value="A">${pA.A}</option>
-                            <option value="C">${pA.C}</option>
-                            ${optD1_A} ${optD2_A}
-                        </select>`;
+                        <select id="m_12_d_a1" class="table-select">${optsA1}</select> / 
+                        <select id="m_12_d_a2" class="table-select">${optsA2}</select>`;
                     nameB = `
-                        <select id="m_12_d_b1" class="table-select">
-                            <option value="X">${pB.X}</option>
-                            <option value="Y">${pB.Y}</option>
-                            <option value="Z">${pB.Z}</option>
-                            ${optD1_B} ${optD2_B}
-                        </select> / 
-                        <select id="m_12_d_b2" class="table-select">
-                            <option value="Y">${pB.Y}</option>
-                            <option value="X">${pB.X}</option>
-                            <option value="Z">${pB.Z}</option>
-                            ${optD1_B} ${optD2_B}
-                        </select>`;
+                        <select id="m_12_d_b1" class="table-select">${optsB1}</select> / 
+                        <select id="m_12_d_b2" class="table-select">${optsB2}</select>`;
+
                     let qA1 = getPlayerQttr('A', 'free1');
                     let qA2 = getPlayerQttr('A', 'free2');
                     let qB1 = getPlayerQttr('B', 'free1');
@@ -1323,37 +1343,47 @@
                     nameA = `${pA[m.keysA[0]]} / ${pA[m.keysA[1]]}`;
                     nameB = `${pB[m.keysB[0]]} / ${pB[m.keysB[1]]}`;
                 } else if (m.type === 'frei') {
-                    let optD1_A = pA.D1 ? `<option value="D1">${pA.D1}</option>` : '';
-                    let optD2_A = pA.D2 ? `<option value="D2">${pA.D2}</option>` : '';
-                    let optD1_B = pB.X2 ? `<option value="X2">${pB.X2}</option>` : '';
-                    let optD2_B = pB.Y2 ? `<option value="Y2">${pB.Y2}</option>` : '';
+                    let heimChoices = [
+                        { val: 'A', name: pA.A },
+                        { val: 'B', name: pA.B },
+                        { val: 'C', name: pA.C }
+                    ];
+                    if (pA.D1) heimChoices.push({ val: 'D1', name: pA.D1 });
+                    if (pA.D2) heimChoices.push({ val: 'D2', name: pA.D2 });
+
+                    let gastChoices = [
+                        { val: 'X', name: pB.X },
+                        { val: 'Y', name: pB.Y },
+                        { val: 'Z', name: pB.Z }
+                    ];
+                    if (pB.X2) gastChoices.push({ val: 'X2', name: pB.X2 });
+                    if (pB.Y2) gastChoices.push({ val: 'Y2', name: pB.Y2 });
+
+                    let curA1 = savedFreeA1 || 'A';
+                    let curA2 = savedFreeA2 || 'B';
+                    let curB1 = savedFreeB1 || 'X';
+                    let curB2 = savedFreeB2 || 'Y';
+
+                    if (curA1 === curA2) {
+                        let alt = heimChoices.find(c => c.val !== curA1);
+                        if (alt) curA2 = alt.val;
+                    }
+                    if (curB1 === curB2) {
+                        let alt = gastChoices.find(c => c.val !== curB1);
+                        if (alt) curB2 = alt.val;
+                    }
+
+                    let optsA1 = getFilteredOptions(heimChoices, curA1, curA2);
+                    let optsA2 = getFilteredOptions(heimChoices, curA2, curA1);
+                    let optsB1 = getFilteredOptions(gastChoices, curB1, curB2);
+                    let optsB2 = getFilteredOptions(gastChoices, curB2, curB1);
 
                     nameA = `
-                        <select id="m_12_d_a1" class="table-select">
-                            <option value="A">${pA.A}</option>
-                            <option value="B">${pA.B}</option>
-                            <option value="C">${pA.C}</option>
-                            ${optD1_A} ${optD2_A}
-                        </select> / 
-                        <select id="m_12_d_a2" class="table-select">
-                            <option value="B">${pA.B}</option>
-                            <option value="A">${pA.A}</option>
-                            <option value="C">${pA.C}</option>
-                            ${optD1_A} ${optD2_A}
-                        </select>`;
+                        <select id="m_12_d_a1" class="table-select">${optsA1}</select> / 
+                        <select id="m_12_d_a2" class="table-select">${optsA2}</select>`;
                     nameB = `
-                        <select id="m_12_d_b1" class="table-select">
-                            <option value="X">${pB.X}</option>
-                            <option value="Y">${pB.Y}</option>
-                            <option value="Z">${pB.Z}</option>
-                            ${optD1_B} ${optD2_B}
-                        </select> / 
-                        <select id="m_12_d_b2" class="table-select">
-                            <option value="Y">${pB.Y}</option>
-                            <option value="X">${pB.X}</option>
-                            <option value="Z">${pB.Z}</option>
-                            ${optD1_B} ${optD2_B}
-                        </select>`;
+                        <select id="m_12_d_b1" class="table-select">${optsB1}</select> / 
+                        <select id="m_12_d_b2" class="table-select">${optsB2}</select>`;
                 }
             }
 
@@ -1387,12 +1417,10 @@
             container.innerHTML += card;
         });
 
-        if (savedFreeA1 && document.getElementById('m_12_d_a1')) document.getElementById('m_12_d_a1').value = savedFreeA1;
-        if (savedFreeA2 && document.getElementById('m_12_d_a2')) document.getElementById('m_12_d_a2').value = savedFreeA2;
-        if (savedFreeB1 && document.getElementById('m_12_d_b1')) document.getElementById('m_12_d_b1').value = savedFreeB1;
-        if (savedFreeB2 && document.getElementById('m_12_d_b2')) document.getElementById('m_12_d_b2').value = savedFreeB2;
-
-        autoSelectGame13IfNewPlayers();
+        // Falls noch keine gespeicherten Werte vorlagen, initial einmal auto-setzen
+        if (!savedFreeA1 && !savedFreeA2) {
+            autoSelectGame13IfNewPlayers();
+        }
 
         ['m_12_d_a1', 'm_12_d_a2', 'm_12_d_b1', 'm_12_d_b2'].forEach(id => {
             const el = document.getElementById(id);
@@ -1875,15 +1903,17 @@
         }
     }
 
-    function handleExcelLoad(event) {
-        document.getElementById('drawerMenu').classList.remove('active');
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
+    // AUTOMATISCHER EXCEL-IMPORT IM HINTERGRUND BEI SEITENAUFRUF
+    function loadExcelFromGitHub() {
+        fetch('spielerliste.xlsx')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Datei spielerliste.xlsx nicht gefunden.');
+                }
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => {
+                const data = new Uint8Array(arrayBuffer);
                 const workbook = XLSX.read(data, { type: 'array' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
@@ -1914,22 +1944,16 @@
                     }
                 }
 
-                if (roster.length === 0) {
-                    alert('Es konnten keine gültigen Daten in der Excel-Datei gefunden werden.');
-                    return;
+                if (roster.length > 0) {
+                    localStorage.setItem('wesermarsch_pokal_roster', JSON.stringify(roster));
+                    updateAllDropdowns();
+                    renderMatchTable();
+                    console.log(`Erfolgreich ${roster.length} Spielereinträge automatisch geladen.`);
                 }
-
-                localStorage.setItem('wesermarsch_pokal_roster', JSON.stringify(roster));
-                updateAllDropdowns();
-                renderMatchTable();
-                alert(`Erfolgreich ${roster.length} Spielereinträge (inkl. QTTR-Werten) aus der Excel-Datei geladen!`);
-            } catch (err) {
-                console.error("Excel Lesefehler:", err);
-                alert('Fehler beim Lesen der Excel-Datei.');
-            }
-        };
-        reader.readAsArrayBuffer(file);
-        event.target.value = '';
+            })
+            .catch(err => {
+                console.warn("Automatischer Excel-Import im Hintergrund fehlgeschlagen (Datei eventuell noch nicht hochgeladen):", err);
+            });
     }
 
     function getFilteredRoster() {
@@ -2131,10 +2155,12 @@
             applyQttrUIVisibility();
             updatePdfFooterHint();
 
+            // Automatisches Laden der Excel-Datei im Hintergrund beim Start
+            loadExcelFromGitHub();
+
             const burgerBtn = document.getElementById('burgerBtn');
             const drawerMenu = document.getElementById('drawerMenu');
             if (burgerBtn && drawerMenu) {
-                // Safari-Fix: Verwende 'pointerdown' statt 'click' für flüssiges Öffnen auf iOS
                 burgerBtn.addEventListener('pointerdown', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -2155,20 +2181,12 @@
                 });
             });
 
-            const excelFileInput = document.getElementById('excelFileInput');
-            const btnLoadExcel = document.getElementById('btnLoadExcel');
-            if (btnLoadExcel && excelFileInput) {
-                btnLoadExcel.addEventListener('click', () => excelFileInput.click());
-                excelFileInput.addEventListener('change', handleExcelLoad);
-            }
-
             document.getElementById('btnAdminLogin').addEventListener('click', openAdminModal);
             document.getElementById('btnSettings').addEventListener('click', openSettingsModal);
             document.getElementById('btnResetGame').addEventListener('click', resetGame);
 
             const pokalForm = document.getElementById('pokalForm');
             if (pokalForm) {
-                // Safari-Fix: Übergabe von 'e' an die Event-Listener, um undefined-Fehler zu verhindern
                 pokalForm.addEventListener('input', (e) => {
                     checkAdminLockOnInput();
                     autoSave();
