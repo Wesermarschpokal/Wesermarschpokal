@@ -1781,7 +1781,7 @@
         const canvasB = document.getElementById('sigCanvasB');
 
         return {
-            version: "1.31",
+            version: "1.32",
             stammdaten: {
                 spielklasse: document.getElementById('spielklasse').value || 'Erwachsene',
                 datum: document.getElementById('datum').value || '',
@@ -1839,7 +1839,7 @@
                 document.getElementById('datum').value = st.datum || '';
                 document.getElementById('uhrzeit').value = st.uhrzeit || '';
                 
-                updateClubDatalists();
+                updateClubDropdowns();
                 document.getElementById('heimName').value = st.heimName || '';
                 updatePlayerDropdowns();
                 document.getElementById('gastName').value = st.gastName || '';
@@ -1989,9 +1989,9 @@
                 if (selectedSpielklasse === 'erwachsene') {
                     return sk === 'erwachsene' || sk === 'damen';
                 } else if (selectedSpielklasse === 'jugend 19') {
-                    return sk === 'jugend 19';
+                    return sk.includes('jugend') || sk.includes('mädchen');
                 } else if (selectedSpielklasse === 'jugend 15') {
-                    return sk === 'jugend 15' || sk === 'jugend 13';
+                    return sk.includes('jugend 15') || sk.includes('jugend 13') || sk.includes('mädchen 15') || sk.includes('mädchen 13');
                 }
                 return sk.includes(selectedSpielklasse);
             });
@@ -2073,9 +2073,36 @@
         gastSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
 
         const filteredRoster = getFilteredRoster();
-        const uniqueClubs = [...new Set(filteredRoster.map(item => item.verein))].sort();
+        const selectedSpielklasse = document.getElementById('spielklasse').value.trim();
 
-        uniqueClubs.forEach(club => {
+        // Extrahiere eindeutige Vereine und prüfe auf spezifische Spalten-Zusätze (z.B. Jugend 15 / Jugend 13)
+        const clubMap = new Map();
+        filteredRoster.forEach(item => {
+            let baseClub = item.verein;
+            let skLower = item.spielklasse.toLowerCase();
+            let suffix = '';
+
+            if (selectedSpielklasse === 'Jugend 19') {
+                if (skLower.includes('jugend 15') || skLower.includes('mädchen 15')) {
+                    suffix = ' (Jugend 15)';
+                } else if (skLower.includes('jugend 13') || skLower.includes('mädchen 13')) {
+                    suffix = ' (Jugend 13)';
+                }
+            } else if (selectedSpielklasse === 'Jugend 15') {
+                if (skLower.includes('jugend 13') || skLower.includes('mädchen 13')) {
+                    suffix = ' (Jugend 13)';
+                }
+            }
+
+            let displayClub = baseClub + suffix;
+            if (!clubMap.has(displayClub)) {
+                clubMap.set(displayClub, baseClub);
+            }
+        });
+
+        const sortedClubs = [...clubMap.keys()].sort();
+
+        sortedClubs.forEach(club => {
             if (club !== gastVal) {
                 const optHeim = document.createElement('option');
                 optHeim.value = club;
@@ -2095,10 +2122,10 @@
 
     function updatePlayerDropdowns() {
         const filteredRoster = getFilteredRoster();
-        const heimClub = document.getElementById('heimName').value.trim();
-        const gastClub = document.getElementById('gastName').value.trim();
+        const heimClubRaw = document.getElementById('heimName').value.trim().replace(/\s*\([^)]*\)/g, '');
+        const gastClubRaw = document.getElementById('gastName').value.trim().replace(/\s*\([^)]*\)/g, '');
 
-        const heimPlayersAll = filteredRoster.filter(item => isTeamAllowed(heimClub, item.verein)).map(item => item.spieler);
+        const heimPlayersAll = filteredRoster.filter(item => isTeamAllowed(heimClubRaw, item.verein)).map(item => item.spieler);
         const uniqueHeimPlayers = heimPlayersAll.filter((item, index) => heimPlayersAll.indexOf(item) === index);
 
         const heimSelects = [
@@ -2116,7 +2143,6 @@
 
             selectEl.innerHTML = `<option value="">${item.defaultText}</option>`;
             uniqueHeimPlayers.forEach(p => {
-                // Prüfen ob Spieler bereits in einem anderen Feld gewählt wurde
                 let alreadySelected = false;
                 heimSelects.forEach((other, otherIdx) => {
                     if (otherIdx !== idx) {
@@ -2135,7 +2161,7 @@
             });
         });
 
-        const gastPlayersAll = filteredRoster.filter(item => isTeamAllowed(gastClub, item.verein)).map(item => item.spieler);
+        const gastPlayersAll = filteredRoster.filter(item => isTeamAllowed(gastClubRaw, item.verein)).map(item => item.spieler);
         const uniqueGastPlayers = gastPlayersAll.filter((item, index) => gastPlayersAll.indexOf(item) === index);
 
         const gastSelects = [
