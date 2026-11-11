@@ -724,11 +724,26 @@
                             <option value="">Bitte Verein wählen</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>Spieler A</label><input type="text" id="spielerA_A" list="heimPlayerList1" placeholder="Name Spieler A"></div>
-                    <div class="form-group"><label>Spieler B</label><input type="text" id="spielerA_B" list="heimPlayerList2" placeholder="Name Spieler B"></div>
-                    <div class="form-group"><label>Spieler C</label><input type="text" id="spielerA_C" list="heimPlayerList3" placeholder="Name Spieler C"></div>
-                    <div class="form-group"><label>Nur Doppel 1</label><input type="text" id="spielerA_D1" list="heimPlayerList4"></div>
-                    <div class="form-group"><label>Nur Doppel 2</label><input type="text" id="spielerA_D2" list="heimPlayerList5"></div>
+                    <div class="form-group">
+                        <label>Spieler A</label>
+                        <select id="spielerA_A"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler B</label>
+                        <select id="spielerA_B"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler C</label>
+                        <select id="spielerA_C"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel 1</label>
+                        <select id="spielerA_D1"><option value="">Keiner (optional)</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel 2</label>
+                        <select id="spielerA_D2"><option value="">Keiner (optional)</option></select>
+                    </div>
                 </div>
 
                 <!-- Gastmannschaft -->
@@ -743,11 +758,26 @@
                             <option value="">Bitte Verein wählen</option>
                         </select>
                     </div>
-                    <div class="form-group"><label>Spieler X</label><input type="text" id="spielerB_A" list="guestPlayerList1" placeholder="Name Spieler X"></div>
-                    <div class="form-group"><label>Spieler Y</label><input type="text" id="spielerB_B" list="guestPlayerList2" placeholder="Name Spieler Y"></div>
-                    <div class="form-group"><label>Spieler Z</label><input type="text" id="spielerB_C" list="guestPlayerList3" placeholder="Name Spieler Z"></div>
-                    <div class="form-group"><label>Nur Doppel 1</label><input type="text" id="spielerB_D1" list="guestPlayerList4"></div>
-                    <div class="form-group"><label>Nur Doppel 2</label><input type="text" id="spielerB_D2" list="guestPlayerList5"></div>
+                    <div class="form-group">
+                        <label>Spieler X</label>
+                        <select id="spielerB_A"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler Y</label>
+                        <select id="spielerB_B"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Spieler Z</label>
+                        <select id="spielerB_C"><option value="">Bitte wählen</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel 1</label>
+                        <select id="spielerB_D1"><option value="">Keiner (optional)</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel 2</label>
+                        <select id="spielerB_D2"><option value="">Keiner (optional)</option></select>
+                    </div>
                 </div>
             </div>
             <div style="text-align: right; margin-top: 10px;" class="hide-on-pdf">
@@ -828,18 +858,6 @@
     <!-- Fußzeilen-Hinweis für PDF -->
     <div id="pdfFooterHint" class="pdf-footer-hint">Die Vorgabe wurde mit Ligenzugehörigkeit errechnet</div>
 </div>
-
-<!-- Datalist Elemente für Spieler-Auswahl -->
-<datalist id="heimPlayerList1"></datalist>
-<datalist id="heimPlayerList2"></datalist>
-<datalist id="heimPlayerList3"></datalist>
-<datalist id="heimPlayerList4"></datalist>
-<datalist id="heimPlayerList5"></datalist>
-<datalist id="guestPlayerList1"></datalist>
-<datalist id="guestPlayerList2"></datalist>
-<datalist id="guestPlayerList3"></datalist>
-<datalist id="guestPlayerList4"></datalist>
-<datalist id="guestPlayerList5"></datalist>
 
 <!-- Modal: Spielsystem -->
 <div class="modal-overlay hide-on-pdf" id="systemModal">
@@ -1068,9 +1086,9 @@
         };
         const inputId = idMap[letter];
         if (inputId) {
-            const input = document.getElementById(inputId);
-            if (input && input.value.trim() !== '') {
-                return input.value.trim();
+            const selectEl = document.getElementById(inputId);
+            if (selectEl && selectEl.value.trim() !== '') {
+                return selectEl.value.trim();
             }
         }
         
@@ -1763,7 +1781,7 @@
         const canvasB = document.getElementById('sigCanvasB');
 
         return {
-            version: "1.30",
+            version: "1.31",
             stammdaten: {
                 spielklasse: document.getElementById('spielklasse').value || 'Erwachsene',
                 datum: document.getElementById('datum').value || '',
@@ -1821,12 +1839,11 @@
                 document.getElementById('datum').value = st.datum || '';
                 document.getElementById('uhrzeit').value = st.uhrzeit || '';
                 
-                updateClubDatalists(); // Dropdowns befüllen, damit Werte gesetzt werden können
-                
+                updateClubDatalists();
                 document.getElementById('heimName').value = st.heimName || '';
-                updatePlayerDatalists();
+                updatePlayerDropdowns();
                 document.getElementById('gastName').value = st.gastName || '';
-                updatePlayerDatalists();
+                updatePlayerDropdowns();
 
                 document.getElementById('spielerA_A').value = st.spielerA_A || '';
                 document.getElementById('spielerA_B').value = st.spielerA_B || '';
@@ -1956,7 +1973,7 @@
                 }
             })
             .catch(err => {
-                console.warn("Automatischer Excel-Import im Hintergrund fehlgeschlagen (Datei eventuell noch nicht hochgeladen):", err);
+                console.warn("Automatischer Excel-Import im Hintergrund fehlgeschlagen:", err);
             });
     }
 
@@ -2040,11 +2057,11 @@
     }
 
     function updateAllDropdowns() {
-        updateClubDatalists();
-        updatePlayerDatalists();
+        updateClubDropdowns();
+        updatePlayerDropdowns();
     }
 
-    function updateClubDatalists() {
+    function updateClubDropdowns() {
         const heimSelect = document.getElementById('heimName');
         const gastSelect = document.getElementById('gastName');
         if (!heimSelect || !gastSelect) return;
@@ -2076,7 +2093,7 @@
         });
     }
 
-    function updatePlayerDatalists() {
+    function updatePlayerDropdowns() {
         const filteredRoster = getFilteredRoster();
         const heimClub = document.getElementById('heimName').value.trim();
         const gastClub = document.getElementById('gastName').value.trim();
@@ -2084,51 +2101,74 @@
         const heimPlayersAll = filteredRoster.filter(item => isTeamAllowed(heimClub, item.verein)).map(item => item.spieler);
         const uniqueHeimPlayers = heimPlayersAll.filter((item, index) => heimPlayersAll.indexOf(item) === index);
 
-        const heimA = document.getElementById('spielerA_A').value.trim();
-        const heimB = document.getElementById('spielerA_B').value.trim();
-        const heimC = document.getElementById('spielerA_C').value.trim();
-        const heimD1 = document.getElementById('spielerA_D1').value.trim();
-        const heimD2 = document.getElementById('spielerA_D2').value.trim();
+        const heimSelects = [
+            { id: 'spielerA_A', defaultText: 'Bitte wählen' },
+            { id: 'spielerA_B', defaultText: 'Bitte wählen' },
+            { id: 'spielerA_C', defaultText: 'Bitte wählen' },
+            { id: 'spielerA_D1', defaultText: 'Keiner (optional)' },
+            { id: 'spielerA_D2', defaultText: 'Keiner (optional)' }
+        ];
 
-        ['heimPlayerList1', 'heimPlayerList2', 'heimPlayerList3', 'heimPlayerList4', 'heimPlayerList5'].forEach((id, idx) => {
-            const list = document.getElementById(id);
-            if (list) {
-                list.innerHTML = '';
-                uniqueHeimPlayers.forEach(p => {
-                    if ((idx === 0 && p !== heimB && p !== heimC && p !== heimD1 && p !== heimD2) ||
-                        (idx === 1 && p !== heimA && p !== heimC && p !== heimD1 && p !== heimD2) ||
-                        (idx === 2 && p !== heimA && p !== heimB && p !== heimD1 && p !== heimD2) ||
-                        (idx === 3 && p !== heimA && p !== heimB && p !== heimC && p !== heimD2) ||
-                        (idx === 4 && p !== heimA && p !== heimB && p !== heimC && p !== heimD1)) {
-                        const opt = document.createElement('option'); opt.value = p; list.appendChild(opt);
+        heimSelects.forEach((item, idx) => {
+            const selectEl = document.getElementById(item.id);
+            if (!selectEl) return;
+            const currentVal = selectEl.value;
+
+            selectEl.innerHTML = `<option value="">${item.defaultText}</option>`;
+            uniqueHeimPlayers.forEach(p => {
+                // Prüfen ob Spieler bereits in einem anderen Feld gewählt wurde
+                let alreadySelected = false;
+                heimSelects.forEach((other, otherIdx) => {
+                    if (otherIdx !== idx) {
+                        const otherEl = document.getElementById(other.id);
+                        if (otherEl && otherEl.value === p) alreadySelected = true;
                     }
                 });
-            }
+
+                if (!alreadySelected || p === currentVal) {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    if (p === currentVal) opt.selected = true;
+                    selectEl.appendChild(opt);
+                }
+            });
         });
 
         const gastPlayersAll = filteredRoster.filter(item => isTeamAllowed(gastClub, item.verein)).map(item => item.spieler);
         const uniqueGastPlayers = gastPlayersAll.filter((item, index) => gastPlayersAll.indexOf(item) === index);
 
-        const gastA = document.getElementById('spielerB_A').value.trim();
-        const gastB = document.getElementById('spielerB_B').value.trim();
-        const gastC = document.getElementById('spielerB_C').value.trim();
-        const gastD1 = document.getElementById('spielerB_D1').value.trim();
-        const gastD2 = document.getElementById('spielerB_D2').value.trim();
+        const gastSelects = [
+            { id: 'spielerB_A', defaultText: 'Bitte wählen' },
+            { id: 'spielerB_B', defaultText: 'Bitte wählen' },
+            { id: 'spielerB_C', defaultText: 'Bitte wählen' },
+            { id: 'spielerB_D1', defaultText: 'Keiner (optional)' },
+            { id: 'spielerB_D2', defaultText: 'Keiner (optional)' }
+        ];
 
-        ['guestPlayerList1', 'guestPlayerList2', 'guestPlayerList3', 'guestPlayerList4', 'guestPlayerList5'].forEach((id, idx) => {
-            const list = document.getElementById(id);
-            if (list) {
-                list.innerHTML = '';
-                uniqueGastPlayers.forEach(p => {
-                    if ((idx === 0 && p !== gastB && p !== gastC && p !== gastD1 && p !== gastD2) ||
-                        (idx === 1 && p !== gastA && p !== gastC && p !== gastD1 && p !== gastD2) ||
-                        (idx === 2 && p !== gastA && p !== gastB && p !== gastD1 && p !== gastD2) ||
-                        (idx === 3 && p !== gastA && p !== gastB && p !== gastC && p !== gastD2) ||
-                        (idx === 4 && p !== gastA && p !== gastB && p !== gastC && p !== gastD1)) {
-                        const opt = document.createElement('option'); opt.value = p; list.appendChild(opt);
+        gastSelects.forEach((item, idx) => {
+            const selectEl = document.getElementById(item.id);
+            if (!selectEl) return;
+            const currentVal = selectEl.value;
+
+            selectEl.innerHTML = `<option value="">${item.defaultText}</option>`;
+            uniqueGastPlayers.forEach(p => {
+                let alreadySelected = false;
+                gastSelects.forEach((other, otherIdx) => {
+                    if (otherIdx !== idx) {
+                        const otherEl = document.getElementById(other.id);
+                        if (otherEl && otherEl.value === p) alreadySelected = true;
                     }
                 });
-            }
+
+                if (!alreadySelected || p === currentVal) {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    if (p === currentVal) opt.selected = true;
+                    selectEl.appendChild(opt);
+                }
+            });
         });
     }
 
@@ -2169,7 +2209,6 @@
             applyQttrUIVisibility();
             updatePdfFooterHint();
 
-            // Automatisches Laden der Excel-Datei im Hintergrund beim Start
             loadExcelFromGitHub();
 
             const burgerBtn = document.getElementById('burgerBtn');
@@ -2248,7 +2287,8 @@
                 if (el) {
                     el.addEventListener('change', () => {
                         checkAdminLockOnInput();
-                        updateAllDropdowns();
+                        updateClubDropdowns();
+                        updatePlayerDropdowns();
                         renderMatchTable();
                     });
                 }
@@ -2258,9 +2298,9 @@
              'spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
-                    el.addEventListener('input', () => {
+                    el.addEventListener('change', () => {
                         checkAdminLockOnInput();
-                        updatePlayerDatalists();
+                        updatePlayerDropdowns();
                         renderMatchTable();
                     });
                 }
