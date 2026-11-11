@@ -720,7 +720,9 @@
                     </div>
                     <div class="form-group">
                         <label>Mannschaftsname</label>
-                        <input type="text" id="heimName" list="heimClubList" placeholder="Mannschaftsname">
+                        <select id="heimName">
+                            <option value="">Bitte Verein wählen</option>
+                        </select>
                     </div>
                     <div class="form-group"><label>Spieler A</label><input type="text" id="spielerA_A" list="heimPlayerList1" placeholder="Name Spieler A"></div>
                     <div class="form-group"><label>Spieler B</label><input type="text" id="spielerA_B" list="heimPlayerList2" placeholder="Name Spieler B"></div>
@@ -737,7 +739,9 @@
                     </div>
                     <div class="form-group">
                         <label>Mannschaftsname</label>
-                        <input type="text" id="gastName" list="gastClubList" placeholder="Mannschaftsname">
+                        <select id="gastName">
+                            <option value="">Bitte Verein wählen</option>
+                        </select>
                     </div>
                     <div class="form-group"><label>Spieler X</label><input type="text" id="spielerB_A" list="guestPlayerList1" placeholder="Name Spieler X"></div>
                     <div class="form-group"><label>Spieler Y</label><input type="text" id="spielerB_B" list="guestPlayerList2" placeholder="Name Spieler Y"></div>
@@ -825,9 +829,7 @@
     <div id="pdfFooterHint" class="pdf-footer-hint">Die Vorgabe wurde mit Ligenzugehörigkeit errechnet</div>
 </div>
 
-<!-- Datalist Elemente für Dropdowns mit Ausschluss-Funktion -->
-<datalist id="heimClubList"></datalist>
-<datalist id="gastClubList"></datalist>
+<!-- Datalist Elemente für Spieler-Auswahl -->
 <datalist id="heimPlayerList1"></datalist>
 <datalist id="heimPlayerList2"></datalist>
 <datalist id="heimPlayerList3"></datalist>
@@ -1185,7 +1187,6 @@
         }
     }
 
-    // Hilfsfunktion zur Generierung von Options mit Ausschluss des jeweils gewählten Partners
     function getFilteredOptions(choices, selectedVal, excludedVal) {
         return choices.map(c => {
             if (c.val === excludedVal && c.val !== selectedVal) {
@@ -1291,7 +1292,6 @@
                     let curB1 = savedFreeB1 || 'X';
                     let curB2 = savedFreeB2 || 'Y';
 
-                    // Konflikt-Vermeidung falls identisch
                     if (curA1 === curA2) {
                         let alt = heimChoices.find(c => c.val !== curA1);
                         if (alt) curA2 = alt.val;
@@ -1417,7 +1417,6 @@
             container.innerHTML += card;
         });
 
-        // Falls noch keine gespeicherten Werte vorlagen, initial einmal auto-setzen
         if (!savedFreeA1 && !savedFreeA2) {
             autoSelectGame13IfNewPlayers();
         }
@@ -1764,7 +1763,7 @@
         const canvasB = document.getElementById('sigCanvasB');
 
         return {
-            version: "1.29",
+            version: "1.30",
             stammdaten: {
                 spielklasse: document.getElementById('spielklasse').value || 'Erwachsene',
                 datum: document.getElementById('datum').value || '',
@@ -1821,8 +1820,14 @@
                 document.getElementById('spielklasse').value = st.spielklasse || 'Erwachsene';
                 document.getElementById('datum').value = st.datum || '';
                 document.getElementById('uhrzeit').value = st.uhrzeit || '';
+                
+                updateClubDatalists(); // Dropdowns befüllen, damit Werte gesetzt werden können
+                
                 document.getElementById('heimName').value = st.heimName || '';
+                updatePlayerDatalists();
                 document.getElementById('gastName').value = st.gastName || '';
+                updatePlayerDatalists();
+
                 document.getElementById('spielerA_A').value = st.spielerA_A || '';
                 document.getElementById('spielerA_B').value = st.spielerA_B || '';
                 document.getElementById('spielerA_C').value = st.spielerA_C || '';
@@ -1837,7 +1842,6 @@
                 if (document.getElementById('fixedVorgabeValue') && st.fixedVorgabeValue) document.getElementById('fixedVorgabeValue').value = st.fixedVorgabeValue;
             }
 
-            updateAllDropdowns();
             renderMatchTable();
 
             if (data.spiele && Array.isArray(data.spiele)) {
@@ -2041,23 +2045,33 @@
     }
 
     function updateClubDatalists() {
-        const heimList = document.getElementById('heimClubList');
-        const gastList = document.getElementById('gastClubList');
-        if (!heimList || !gastList) return;
-        heimList.innerHTML = '';
-        gastList.innerHTML = '';
+        const heimSelect = document.getElementById('heimName');
+        const gastSelect = document.getElementById('gastName');
+        if (!heimSelect || !gastSelect) return;
+
+        const heimVal = heimSelect.value;
+        const gastVal = gastSelect.value;
+
+        heimSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
+        gastSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
 
         const filteredRoster = getFilteredRoster();
         const uniqueClubs = [...new Set(filteredRoster.map(item => item.verein))].sort();
-        const heimVal = document.getElementById('heimName').value.trim();
-        const gastVal = document.getElementById('gastName').value.trim();
 
         uniqueClubs.forEach(club => {
             if (club !== gastVal) {
-                const opt = document.createElement('option'); opt.value = club; heimList.appendChild(opt);
+                const optHeim = document.createElement('option');
+                optHeim.value = club;
+                optHeim.textContent = club;
+                if (club === heimVal) optHeim.selected = true;
+                heimSelect.appendChild(optHeim);
             }
             if (club !== heimVal) {
-                const opt = document.createElement('option'); opt.value = club; gastList.appendChild(opt);
+                const optGast = document.createElement('option');
+                optGast.value = club;
+                optGast.textContent = club;
+                if (club === gastVal) optGast.selected = true;
+                gastSelect.appendChild(optGast);
             }
         });
     }
@@ -2232,7 +2246,7 @@
             ['heimName', 'gastName'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
-                    el.addEventListener('input', () => {
+                    el.addEventListener('change', () => {
                         checkAdminLockOnInput();
                         updateAllDropdowns();
                         renderMatchTable();
