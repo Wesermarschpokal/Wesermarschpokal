@@ -1781,7 +1781,7 @@
         const canvasB = document.getElementById('sigCanvasB');
 
         return {
-            version: "1.33",
+            version: "1.34",
             stammdaten: {
                 spielklasse: document.getElementById('spielklasse').value || 'Erwachsene',
                 datum: document.getElementById('datum').value || '',
@@ -1977,7 +1977,7 @@
             });
     }
 
-    // FILTERLOGIK FÜR DIE SPIELKLASSEN (GRUNDFILTER)
+    // ANGEPASSTE GRUND-FILTERLOGIK FÜR SPIELKLASSEN
     function getFilteredRoster() {
         const rosterJson = localStorage.getItem('wesermarsch_pokal_roster');
         if (!rosterJson) return [];
@@ -1990,8 +1990,12 @@
                 if (selectedSpielklasse === 'erwachsene') {
                     return sk === 'erwachsene' || sk === 'damen';
                 } else if (selectedSpielklasse === 'jugend 19') {
-                    return sk.includes('jugend') || sk.includes('mädchen');
+                    // Jugend 19: Nur Jugend, Mädchen, Jugend 15, Mädchen 15 (KEINE 13er)
+                    const is13 = sk.includes('13');
+                    const isYouthOrGirl = sk.includes('jugend') || sk.includes('mädchen');
+                    return isYouthOrGirl && !is13;
                 } else if (selectedSpielklasse === 'jugend 15') {
+                    // Jugend 15: Jugend 15, Jugend 13, Mädchen 15, Mädchen 13
                     return sk.includes('jugend 15') || sk.includes('jugend 13') || sk.includes('mädchen 15') || sk.includes('mädchen 13');
                 }
                 return sk.includes(selectedSpielklasse);
@@ -2085,8 +2089,6 @@
             if (selectedSpielklasse === 'jugend 19') {
                 if (skLower.includes('jugend 15')) suffix = ' (Jugend 15)';
                 else if (skLower.includes('mädchen 15')) suffix = ' (Mädchen 15)';
-                else if (skLower.includes('jugend 13')) suffix = ' (Jugend 13)';
-                else if (skLower.includes('mädchen 13')) suffix = ' (Mädchen 13)';
             } else if (selectedSpielklasse === 'jugend 15') {
                 if (skLower.includes('jugend 13')) suffix = ' (Jugend 13)';
                 else if (skLower.includes('mädchen 13')) suffix = ' (Mädchen 13)';
@@ -2118,7 +2120,7 @@
         });
     }
 
-    // GENAUE SPIELERFILTERUNG BASIEREND AUF AUSGEWÄHLTER MANNSCHAFT & UNTERKATEGORIE
+    // EXAKTE SPIELERFILTERUNG NACH AUSGEWÄHLTER MANNSCHAFT & UNTERKATEGORIE
     function getPlayersForTeam(teamSelectId) {
         const selectEl = document.getElementById(teamSelectId);
         if (!selectEl) return [];
@@ -2142,22 +2144,20 @@
             if (!isTeamAllowed(baseClub, item.verein)) return false;
             const sk = item.spielklasse.toLowerCase();
 
-            // Grundfilter nach Spielklasse
             if (selectedSpielklasse === 'erwachsene') {
                 if (!(sk === 'erwachsene' || sk === 'damen')) return false;
             } else if (selectedSpielklasse === 'jugend 19') {
+                if (sk.includes('13')) return false; // 13er komplett ausschließen
                 if (!(sk.includes('jugend') || sk.includes('mädchen'))) return false;
             } else if (selectedSpielklasse === 'jugend 15') {
                 if (!(sk.includes('jugend 15') || sk.includes('jugend 13') || sk.includes('mädchen 15') || sk.includes('mädchen 13'))) return false;
             }
 
-            // Untergruppen-Filter (falls eine spezifische Jugend 15 / Jugend 13 Mannschaft gewählt wurde)
             if (subFilter) {
                 return sk.includes(subFilter);
             } else {
-                // Bei allgemeiner Jugend 19 Auswahl ohne Unter-Suffix sollen spezifische 15er/13er Zeilen nicht auftauchen
                 if (selectedSpielklasse === 'jugend 19') {
-                    if (sk.includes('15') || sk.includes('13')) return false;
+                    if (sk.includes('15')) return false; // Allgemeine J19 zeigt keine 15er Spieler
                 }
             }
             return true;
