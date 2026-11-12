@@ -1781,7 +1781,7 @@
         const canvasB = document.getElementById('sigCanvasB');
 
         return {
-            version: "1.32",
+            version: "1.33",
             stammdaten: {
                 spielklasse: document.getElementById('spielklasse').value || 'Erwachsene',
                 datum: document.getElementById('datum').value || '',
@@ -1977,7 +1977,7 @@
             });
     }
 
-    // ROBUSTE FILTERLOGIK FÜR DIE SPIELKLASSEN
+    // FILTERLOGIK FÜR DIE SPIELKLASSEN (GRUNDFILTER)
     function getFilteredRoster() {
         const rosterJson = localStorage.getItem('wesermarsch_pokal_roster');
         if (!rosterJson) return [];
@@ -2074,25 +2074,22 @@
         gastSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
 
         const filteredRoster = getFilteredRoster();
-        const selectedSpielklasse = document.getElementById('spielklasse').value.trim();
+        const selectedSpielklasse = document.getElementById('spielklasse').value.trim().toLowerCase();
 
-        // Extrahiere Vereine und füge bei Bedarf Unterkategorien hinzu
         const clubMap = new Map();
         filteredRoster.forEach(item => {
             let baseClub = item.verein;
             let skLower = item.spielklasse.toLowerCase();
             let suffix = '';
 
-            if (selectedSpielklasse === 'Jugend 19') {
-                if (skLower.includes('jugend 15') || skLower.includes('mädchen 15')) {
-                    suffix = ' (Jugend 15)';
-                } else if (skLower.includes('jugend 13') || skLower.includes('mädchen 13')) {
-                    suffix = ' (Jugend 13)';
-                }
-            } else if (selectedSpielklasse === 'Jugend 15') {
-                if (skLower.includes('jugend 13') || skLower.includes('mädchen 13')) {
-                    suffix = ' (Jugend 13)';
-                }
+            if (selectedSpielklasse === 'jugend 19') {
+                if (skLower.includes('jugend 15')) suffix = ' (Jugend 15)';
+                else if (skLower.includes('mädchen 15')) suffix = ' (Mädchen 15)';
+                else if (skLower.includes('jugend 13')) suffix = ' (Jugend 13)';
+                else if (skLower.includes('mädchen 13')) suffix = ' (Mädchen 13)';
+            } else if (selectedSpielklasse === 'jugend 15') {
+                if (skLower.includes('jugend 13')) suffix = ' (Jugend 13)';
+                else if (skLower.includes('mädchen 13')) suffix = ' (Mädchen 13)';
             }
 
             let displayClub = baseClub + suffix;
@@ -2121,13 +2118,54 @@
         });
     }
 
-    function updatePlayerDropdowns() {
-        const filteredRoster = getFilteredRoster();
-        const heimClubRaw = document.getElementById('heimName').value.trim().replace(/\s*\([^)]*\)/g, '');
-        const gastClubRaw = document.getElementById('gastName').value.trim().replace(/\s*\([^)]*\)/g, '');
+    // GENAUE SPIELERFILTERUNG BASIEREND AUF AUSGEWÄHLTER MANNSCHAFT & UNTERKATEGORIE
+    function getPlayersForTeam(teamSelectId) {
+        const selectEl = document.getElementById(teamSelectId);
+        if (!selectEl) return [];
+        const val = selectEl.value.trim();
+        if (!val) return [];
 
-        const heimPlayersAll = filteredRoster.filter(item => isTeamAllowed(heimClubRaw, item.verein)).map(item => item.spieler);
-        const uniqueHeimPlayers = heimPlayersAll.filter((item, index) => heimPlayersAll.indexOf(item) === index);
+        let baseClub = val;
+        let subFilter = '';
+        const match = val.match(/^(.*?)\s*\(([^)]+)\)$/);
+        if (match) {
+            baseClub = match[1].trim();
+            subFilter = match[2].trim().toLowerCase();
+        }
+
+        const rosterJson = localStorage.getItem('wesermarsch_pokal_roster');
+        if (!rosterJson) return [];
+        const roster = JSON.parse(rosterJson);
+        const selectedSpielklasse = document.getElementById('spielklasse').value.trim().toLowerCase();
+
+        return roster.filter(item => {
+            if (!isTeamAllowed(baseClub, item.verein)) return false;
+            const sk = item.spielklasse.toLowerCase();
+
+            // Grundfilter nach Spielklasse
+            if (selectedSpielklasse === 'erwachsene') {
+                if (!(sk === 'erwachsene' || sk === 'damen')) return false;
+            } else if (selectedSpielklasse === 'jugend 19') {
+                if (!(sk.includes('jugend') || sk.includes('mädchen'))) return false;
+            } else if (selectedSpielklasse === 'jugend 15') {
+                if (!(sk.includes('jugend 15') || sk.includes('jugend 13') || sk.includes('mädchen 15') || sk.includes('mädchen 13'))) return false;
+            }
+
+            // Untergruppen-Filter (falls eine spezifische Jugend 15 / Jugend 13 Mannschaft gewählt wurde)
+            if (subFilter) {
+                return sk.includes(subFilter);
+            } else {
+                // Bei allgemeiner Jugend 19 Auswahl ohne Unter-Suffix sollen spezifische 15er/13er Zeilen nicht auftauchen
+                if (selectedSpielklasse === 'jugend 19') {
+                    if (sk.includes('15') || sk.includes('13')) return false;
+                }
+            }
+            return true;
+        }).map(item => item.spieler);
+    }
+
+    function updatePlayerDropdowns() {
+        const uniqueHeimPlayers = getPlayersForTeam('heimName').filter((item, index, arr) => arr.indexOf(item) === index);
 
         const heimSelects = [
             { id: 'spielerA_A', defaultText: 'Bitte wählen' },
@@ -2162,8 +2200,7 @@
             });
         });
 
-        const gastPlayersAll = filteredRoster.filter(item => isTeamAllowed(gastClubRaw, item.verein)).map(item => item.spieler);
-        const uniqueGastPlayers = gastPlayersAll.filter((item, index) => gastPlayersAll.indexOf(item) === index);
+        const uniqueGastPlayers = getPlayersForTeam('gastName').filter((item, index, arr) => arr.indexOf(item) === index);
 
         const gastSelects = [
             { id: 'spielerB_A', defaultText: 'Bitte wählen' },
@@ -2314,7 +2351,6 @@
                 if (el) {
                     el.addEventListener('change', () => {
                         checkAdminLockOnInput();
-                        updateClubDropdowns();
                         updatePlayerDropdowns();
                         renderMatchTable();
                     });
