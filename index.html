@@ -1757,9 +1757,9 @@
             if (sk === 'erwachsene') {
                 return itemSk === 'erwachsene' || itemSk === 'damen';
             } else if (sk.includes('jugend 19')) {
-                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 19') || itemSk.includes('mädchen 15') || itemSk.includes('mädchen 13');
+                return itemSk.includes('jugend 19') || itemSk.includes('mädchen 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
             } else if (sk.includes('jugend 15')) {
-                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 15') || itemSk.includes('mädchen 13');
+                return itemSk.includes('jugend 15') || itemSk.includes('mädchen 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
             }
             return itemSk.includes(sk);
         });
@@ -1798,22 +1798,21 @@
             classes.forEach(c => {
                 let cl = c.toLowerCase();
                 if (selectedMainClass.includes('jugend 19')) {
-                    if (cl.includes('mädchen 19') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 19'))) extraSubClasses.push('Mädchen 19');
+                    if (cl.includes('jugend 15') && !extraSubClasses.some(x => x.toLowerCase().includes('jugend 15'))) extraSubClasses.push('Jugend 15');
                     else if (cl.includes('mädchen 15') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 15'))) extraSubClasses.push('Mädchen 15');
-                    else if (cl.includes('mädchen 13') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 13'))) extraSubClasses.push('Mädchen 13');
                 } else if (selectedMainClass.includes('jugend 15')) {
-                    if (cl.includes('mädchen 15') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 15'))) extraSubClasses.push('Mädchen 15');
+                    if (cl.includes('jugend 13') && !extraSubClasses.some(x => x.toLowerCase().includes('jugend 13'))) extraSubClasses.push('Jugend 13');
                     else if (cl.includes('mädchen 13') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 13'))) extraSubClasses.push('Mädchen 13');
-                } else {
-                    if (cl.includes('damen') && !baseName.toLowerCase().includes('damen')) {
-                        if (!extraSubClasses.includes('Damen')) extraSubClasses.push('Damen');
-                    }
                 }
             });
 
             let displayName = baseName;
-            if (extraSubClasses.length > 0 && !displayName.toLowerCase().includes('damen') && !displayName.toLowerCase().includes('mädchen')) {
-                displayName += ` (${extraSubClasses.join(', ')})`;
+            if (extraSubClasses.length > 0) {
+                // Nur hinzufügen, wenn der Vermerk nicht schon im Namen enthalten ist
+                let subClassStr = extraSubClasses.join(', ');
+                if (!displayName.toLowerCase().includes(subClassStr.toLowerCase())) {
+                    displayName += ` (${subClassStr})`;
+                }
             }
 
             if (clubName !== gVal) heimSelect.add(new Option(displayName, clubName));
@@ -1837,9 +1836,9 @@
             if (selectedMainClass === 'erwachsene') {
                 return itemSk === 'erwachsene' || itemSk === 'damen';
             } else if (selectedMainClass.includes('jugend 19')) {
-                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 19') || itemSk.includes('mädchen 15') || itemSk.includes('mädchen 13');
+                return itemSk.includes('jugend 19') || itemSk.includes('mädchen 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
             } else if (selectedMainClass.includes('jugend 15')) {
-                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 15') || itemSk.includes('mädchen 13');
+                return itemSk.includes('jugend 15') || itemSk.includes('mädchen 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
             }
             return itemSk.includes(selectedMainClass);
         }
@@ -1852,7 +1851,7 @@
         const baseSelectedClub = getBaseClub(val);
         let players = [];
         let startIndex = -1;
-        let targetMaedchenMatch = null; // Speichert exakt, welchen Mädchen-Vermerk die Mannschaft hat (z.B. "mädchen 19")
+        let targetMaedchenMatch = null; 
 
         for (let i = 0; i < fullRoster.length; i++) {
             if (fullRoster[i].verein === val && matchesClass(fullRoster[i].spielklasse)) {
@@ -1879,12 +1878,10 @@
                 if (isTeamDamen) {
                     if (!rowSkLower.includes('damen')) skipPlayer = true;
                 } else if (targetMaedchenMatch) {
-                    // Nur Spieler anzeigen, die exakt denselben Mädchen-Vermerk in Spalte B haben
                     if (!rowSkLower.includes(targetMaedchenMatch)) {
                         skipPlayer = true;
                     }
                 } else {
-                    // Wenn es keine Damen-/Mädchenmannschaft ist, keine Damen/Mädchen-Spieler einmischen, die für andere Klassen gelistet sind
                     if (rowSkLower.includes('damen') || rowSkLower.includes('mädchen')) {
                         skipPlayer = true;
                     }
