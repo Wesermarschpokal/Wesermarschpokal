@@ -1741,6 +1741,7 @@
         heimSelect.value = hVal; gastSelect.value = gVal;
     }
 
+    // Geändert: Liefert alle Spieler des Vereins in der aktuellen Spielklasse (inkl. nachfolgender Mannschaften)
     function getPlayersForTeam(teamSelectId) {
         const val = document.getElementById(teamSelectId).value;
         if (!val) return [];
@@ -1816,7 +1817,6 @@
         updateAllDropdowns();
         renderMatchTable();
 
-        // Event-Listener für manuelle Vorgabe
         document.getElementById('fixedVorgabeTeam').addEventListener('change', () => {
             checkAdminLockOnInput();
             renderMatchTable();
@@ -1836,7 +1836,7 @@
             if (el) {
                 el.addEventListener('change', (e) => {
                     syncDoubleLetters(e.target.id);
-                    updateAllDropdowns();
+                    updatePlayerDropdowns();
                     renderMatchTable();
                 });
             }
