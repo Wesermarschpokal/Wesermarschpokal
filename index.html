@@ -1791,54 +1791,47 @@
         gastSelect.value = gVal;
     }
 
-    // Korrigierte Logik: Sammelt alle Spieler des gewählten Vereins anhand der Excel-Reihenfolge ab der ersten Übereinstimmung
+    // Exakte Logik: Alle Spieler des gewählten Vereins ab der ersten passenden Zeile, 
+    // solange sie in der Excel-Liste direkt untereinander stehen und dieselbe Spielklasse aufweisen.
     function getPlayersForTeam(teamSelectId) {
         const val = document.getElementById(teamSelectId).value;
         if (!val) return [];
         const fullRoster = getFullRoster();
         const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
 
-        // 1. Finde alle passenden Zeilen für diesen Verein und Spielklasse
-        let relevantRows = fullRoster.filter(i => {
-            if (i.verein !== val) return false;
-            let itemSk = i.spielklasse.toLowerCase();
+        let players = [];
+        let collecting = false;
+
+        for (let i = 0; i < fullRoster.length; i++) {
+            let row = fullRoster[i];
+            let itemSk = row.spielklasse.toLowerCase();
+
+            // Prüfen, ob die Zeile zur ausgewählten Hauptspielklasse gehört
+            let matchesClass = false;
             if (selectedMainClass === 'erwachsene') {
-                return itemSk === 'erwachsene' || itemSk === 'damen';
+                matchesClass = (itemSk === 'erwachsene' || itemSk === 'damen');
             } else if (selectedMainClass.includes('jugend 19')) {
-                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
+                matchesClass = (itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15'));
             } else if (selectedMainClass.includes('jugend 15')) {
-                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
+                matchesClass = (itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13'));
+            } else {
+                matchesClass = itemSk.includes(selectedMainClass);
             }
-            return itemSk.includes(selectedMainClass);
-        });
 
-        // 2. Erweitere auf alle darauffolgenden Zeilen in der Excel-Liste, die zum selben Verein gehören (für nachfolgende Mannschaften)
-        let firstIndex = fullRoster.findIndex(i => i.verein === val);
-        if (firstIndex !== -1) {
-            for (let i = firstIndex; i < fullRoster.length; i++) {
-                let row = fullRoster[i];
-                if (row.verein === val) {
-                    let itemSk = row.spielklasse.toLowerCase();
-                    let matchesClass = false;
-                    if (selectedMainClass === 'erwachsene') {
-                        matchesClass = itemSk === 'erwachsene' || itemSk === 'damen';
-                    } else if (selectedMainClass.includes('jugend 19')) {
-                        matchesClass = itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
-                    } else if (selectedMainClass.includes('jugend 15')) {
-                        matchesClass = itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
-                    } else {
-                        matchesClass = itemSk.includes(selectedMainClass);
-                    }
-
-                    if (matchesClass && !relevantRows.some(r => r.spieler === row.spieler)) {
-                        relevantRows.push(row);
-                    }
+            if (row.verein === val && matchesClass) {
+                collecting = true;
+                if (!players.includes(row.spieler)) {
+                    players.push(row.spieler);
+                }
+            } else if (collecting) {
+                // Sobald ein anderer Verein oder eine andere Spielklasse in der Liste folgt, stoppen wir das Einsammeln
+                if (row.verein !== val || !matchesClass) {
+                    break;
                 }
             }
         }
 
-        // Rückgabe aller eindeutigen Spielernamen
-        return [...new Set(relevantRows.map(i => i.spieler))];
+        return players;
     }
 
     function updatePlayerDropdowns() {
