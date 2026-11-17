@@ -93,6 +93,7 @@
             cursor: pointer;
             font-weight: 500;
             text-decoration: none;
+            box-sizing: border-box;
         }
 
         .drawer-btn:hover {
@@ -539,8 +540,17 @@
             width: 55% !important;
         }
 
-        .pdf-export-mode .double-input-group select {
-            width: 48% !important;
+        .pdf-export-mode .double-input-group {
+            width: 55% !important;
+            justify-content: flex-end !important;
+        }
+
+        .pdf-export-mode .double-input-group select:first-child {
+            width: 70% !important;
+        }
+
+        .pdf-export-mode .double-input-group select:last-child {
+            width: 28% !important;
         }
 
         .pdf-export-mode .match-card {
@@ -759,9 +769,20 @@
                         <label>Nur Doppel für:</label>
                         <div class="double-input-group">
                             <select id="spielerA_D1"><option value="">Keiner (optional)</option></select>
-                            <select id="doppelLetterA">
+                            <select id="doppelLetterA1">
                                 <option value="A">A</option>
                                 <option value="B">B</option>
+                                <option value="C">C</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel für:</label>
+                        <div class="double-input-group">
+                            <select id="spielerA_D2"><option value="">Keiner (optional)</option></select>
+                            <select id="doppelLetterA2">
+                                <option value="B">B</option>
+                                <option value="A">A</option>
                                 <option value="C">C</option>
                             </select>
                         </div>
@@ -796,9 +817,20 @@
                         <label>Nur Doppel für:</label>
                         <div class="double-input-group">
                             <select id="spielerB_D1"><option value="">Keiner (optional)</option></select>
-                            <select id="doppelLetterB">
+                            <select id="doppelLetterB1">
                                 <option value="X">X</option>
                                 <option value="Y">Y</option>
+                                <option value="Z">Z</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Nur Doppel für:</label>
+                        <div class="double-input-group">
+                            <select id="spielerB_D2"><option value="">Keiner (optional)</option></select>
+                            <select id="doppelLetterB2">
+                                <option value="Y">Y</option>
+                                <option value="X">X</option>
                                 <option value="Z">Z</option>
                             </select>
                         </div>
@@ -1050,15 +1082,15 @@
             const gastName = document.getElementById('gastName').value || 'Gast';
             const spielklasse = document.getElementById('spielklasse').value || 'Erwachsene';
 
-            let totalBälleA = 0, totalBälleB = 0;
+            let totalBaelleA = 0, totalBaelleB = 0;
             matchesDef.forEach((_, idx) => {
                 for (let s = 1; s <= 5; s++) {
                     let el = document.getElementById(`m_${idx}_s${s}`);
                     if (el && el.value.trim()) {
                         let parsed = parseSatzScore(el.value);
                         if (parsed) {
-                            totalBälleA += parsed.valA;
-                            totalBälleB += parsed.valB;
+                            totalBaelleA += parsed.valA;
+                            totalBaelleB += parsed.valB;
                         }
                     }
                 }
@@ -1074,14 +1106,14 @@
                 heimName: heimName,
                 gastName: gastName,
                 spielklasse: spielklasse,
-                baelle: `${totalBälleA} : ${totalBälleB}`,
+                baelle: `${totalBaelleA} : ${totalBaelleB}`,
                 saetze: totalSaetze,
                 punkte: totalPunkte,
                 timestamp: Date.now()
             };
 
             let archives = JSON.parse(localStorage.getItem('wesermarsch_spiele_archiv') || '[]');
-            archives.unshift(gameRecord); // Neueste Spiele immer oben
+            archives.unshift(gameRecord);
             localStorage.setItem('wesermarsch_spiele_archiv', JSON.stringify(archives));
         } catch (e) {
             console.error("Fehler beim Speichern in der Spiele-Übersicht:", e);
@@ -1143,19 +1175,25 @@
         }
     }
 
-    function getPlayerName(team, letter) {
-        // Überprüfe ob ein Zusatzspieler für diesen Doppel-Buchstaben definiert wurde
-        if (team === 'A') {
-            let subPlayer = document.getElementById('spielerA_D1').value.trim();
-            let targetLetter = document.getElementById('doppelLetterA').value;
-            if (subPlayer && letter === targetLetter) {
-                return subPlayer;
-            }
-        } else if (team === 'B') {
-            let subPlayer = document.getElementById('spielerB_D1').value.trim();
-            let targetLetter = document.getElementById('doppelLetterB').value;
-            if (subPlayer && letter === targetLetter) {
-                return subPlayer;
+    // isDouble = true prüft die beiden Zusatzspieler für Doppel; isDouble = false nutzt die regulären Einzelspieler
+    function getPlayerName(team, letter, isDouble = false) {
+        if (isDouble) {
+            if (team === 'A') {
+                const sub1 = document.getElementById('spielerA_D1').value.trim();
+                const let1 = document.getElementById('doppelLetterA1').value;
+                if (sub1 && letter === let1) return sub1;
+
+                const sub2 = document.getElementById('spielerA_D2').value.trim();
+                const let2 = document.getElementById('doppelLetterA2').value;
+                if (sub2 && letter === let2) return sub2;
+            } else if (team === 'B') {
+                const sub1 = document.getElementById('spielerB_D1').value.trim();
+                const let1 = document.getElementById('doppelLetterB1').value;
+                if (sub1 && letter === let1) return sub1;
+
+                const sub2 = document.getElementById('spielerB_D2').value.trim();
+                const let2 = document.getElementById('doppelLetterB2').value;
+                if (sub2 && letter === let2) return sub2;
             }
         }
 
@@ -1178,8 +1216,8 @@
         return defaultNames[letter] || `Spieler ${letter}`;
     }
 
-    function getPlayerQttr(team, letter) {
-        let playerName = getPlayerName(team, letter);
+    function getPlayerQttr(team, letter, isDouble = false) {
+        let playerName = getPlayerName(team, letter, isDouble);
         if (!playerName) return 0;
 
         const rosterJson = localStorage.getItem('wesermarsch_pokal_roster');
@@ -1235,6 +1273,28 @@
         }).join('');
     }
 
+    function syncDoubleLetters(changedId) {
+        if (changedId === 'doppelLetterA1' || changedId === 'doppelLetterA2') {
+            const l1 = document.getElementById('doppelLetterA1');
+            const l2 = document.getElementById('doppelLetterA2');
+            if (l1.value === l2.value) {
+                const options = ['A', 'B', 'C'];
+                const next = options.find(o => o !== l1.value);
+                if (changedId === 'doppelLetterA1') l2.value = next;
+                else l1.value = next;
+            }
+        } else if (changedId === 'doppelLetterB1' || changedId === 'doppelLetterB2') {
+            const l1 = document.getElementById('doppelLetterB1');
+            const l2 = document.getElementById('doppelLetterB2');
+            if (l1.value === l2.value) {
+                const options = ['X', 'Y', 'Z'];
+                const next = options.find(o => o !== l1.value);
+                if (changedId === 'doppelLetterB1') l2.value = next;
+                else l1.value = next;
+            }
+        }
+    }
+
     function renderMatchTable() {
         const container = document.getElementById('matchCardContainer');
         if (!container) return;
@@ -1254,8 +1314,29 @@
 
         container.innerHTML = '';
 
-        const pA = { A: getPlayerName('A', 'A'), B: getPlayerName('A', 'B'), C: getPlayerName('A', 'C') };
-        const pB = { X: getPlayerName('B', 'X'), Y: getPlayerName('B', 'Y'), Z: getPlayerName('B', 'Z') };
+        // Einzel-Spieler (immer reguläre Aufstellung)
+        const pASingle = {
+            A: getPlayerName('A', 'A', false),
+            B: getPlayerName('A', 'B', false),
+            C: getPlayerName('A', 'C', false)
+        };
+        const pBSingle = {
+            X: getPlayerName('B', 'X', false),
+            Y: getPlayerName('B', 'Y', false),
+            Z: getPlayerName('B', 'Z', false)
+        };
+
+        // Doppel-Spieler (inkl. Austausch durch "Nur Doppel für:")
+        const pADouble = {
+            A: getPlayerName('A', 'A', true),
+            B: getPlayerName('A', 'B', true),
+            C: getPlayerName('A', 'C', true)
+        };
+        const pBDouble = {
+            X: getPlayerName('B', 'X', true),
+            Y: getPlayerName('B', 'Y', true),
+            Z: getPlayerName('B', 'Z', true)
+        };
 
         const fTeamEl = document.getElementById('fixedVorgabeTeam');
         const fValEl = document.getElementById('fixedVorgabeValue');
@@ -1269,10 +1350,10 @@
 
             if (qttrVorgabeActive) {
                 if (m.type === 'einzel') {
-                    nameA = pA[m.keyA];
-                    nameB = pB[m.keyB];
-                    let qA = getPlayerQttr('A', m.keyA);
-                    let qB = getPlayerQttr('B', m.keyB);
+                    nameA = pASingle[m.keyA];
+                    nameB = pBSingle[m.keyB];
+                    let qA = getPlayerQttr('A', m.keyA, false);
+                    let qB = getPlayerQttr('B', m.keyB, false);
                     if (qA > 0) qttrDisplayA = ` <span class="qttr-span">(${qA})</span>`;
                     if (qB > 0) qttrDisplayB = ` <span class="qttr-span">(${qB})</span>`;
                     let calcV = calculateQttrVorgabePoints(qA, qB);
@@ -1281,12 +1362,12 @@
                         else if (qB < qA) recipientText = `Gast (+${calcV})`;
                     }
                 } else if (m.type === 'doppel') {
-                    nameA = `${pA[m.keysA[0]]} / ${pA[m.keysA[1]]}`;
-                    nameB = `${pB[m.keysB[0]]} / ${pB[m.keysB[1]]}`;
-                    let qA1 = getPlayerQttr('A', m.keysA[0]);
-                    let qA2 = getPlayerQttr('A', m.keysA[1]);
-                    let qB1 = getPlayerQttr('B', m.keysB[0]);
-                    let qB2 = getPlayerQttr('B', m.keysB[1]);
+                    nameA = `${pADouble[m.keysA[0]]} / ${pADouble[m.keysA[1]]}`;
+                    nameB = `${pBDouble[m.keysB[0]]} / ${pBDouble[m.keysB[1]]}`;
+                    let qA1 = getPlayerQttr('A', m.keysA[0], true);
+                    let qA2 = getPlayerQttr('A', m.keysA[1], true);
+                    let qB1 = getPlayerQttr('B', m.keysB[0], true);
+                    let qB2 = getPlayerQttr('B', m.keysB[1], true);
                     let qA = Math.round((qA1 + qA2) / 2);
                     let qB = Math.round((qB1 + qB2) / 2);
                     if (qA > 0) qttrDisplayA = ` <span class="qttr-span">(${qA})</span>`;
@@ -1297,8 +1378,16 @@
                         else if (qB < qA) recipientText = `Gast (+${calcV})`;
                     }
                 } else if (m.type === 'frei') {
-                    let heimChoices = [{ val: 'A', name: pA.A }, { val: 'B', name: pA.B }, { val: 'C', name: pA.C }];
-                    let gastChoices = [{ val: 'X', name: pB.X }, { val: 'Y', name: pB.Y }, { val: 'Z', name: pB.Z }];
+                    let heimChoices = [
+                        { val: 'A', name: pADouble.A },
+                        { val: 'B', name: pADouble.B },
+                        { val: 'C', name: pADouble.C }
+                    ];
+                    let gastChoices = [
+                        { val: 'X', name: pBDouble.X },
+                        { val: 'Y', name: pBDouble.Y },
+                        { val: 'Z', name: pBDouble.Z }
+                    ];
 
                     let curA1 = savedFreeA1 || 'A';
                     let curA2 = savedFreeA2 || 'B';
@@ -1307,20 +1396,42 @@
 
                     nameA = `<select id="m_12_d_a1" class="table-select">${getFilteredOptions(heimChoices, curA1, curA2)}</select> / <select id="m_12_d_a2" class="table-select">${getFilteredOptions(heimChoices, curA2, curA1)}</select>`;
                     nameB = `<select id="m_12_d_b1" class="table-select">${getFilteredOptions(gastChoices, curB1, curB2)}</select> / <select id="m_12_d_b2" class="table-select">${getFilteredOptions(gastChoices, curB2, curB1)}</select>`;
+
+                    let qA1 = getPlayerQttr('A', curA1, true);
+                    let qA2 = getPlayerQttr('A', curA2, true);
+                    let qB1 = getPlayerQttr('B', curB1, true);
+                    let qB2 = getPlayerQttr('B', curB2, true);
+                    let qA = Math.round((qA1 + qA2) / 2);
+                    let qB = Math.round((qB1 + qB2) / 2);
+                    if (qA > 0) qttrDisplayA = ` <span class="qttr-span">(${qA})</span>`;
+                    if (qB > 0) qttrDisplayB = ` <span class="qttr-span">(${qB})</span>`;
+                    let calcV = calculateQttrVorgabePoints(qA, qB);
+                    if (calcV > 0) {
+                        if (qA < qB) recipientText = `Heim (+${calcV})`;
+                        else if (qB < qA) recipientText = `Gast (+${calcV})`;
+                    }
                 }
             } else {
                 if (fixedTeam === 'Heim') recipientText = `Heim (+${fixedVal})`;
                 else if (fixedTeam === 'Gast') recipientText = `Gast (+${fixedVal})`;
 
                 if (m.type === 'einzel') {
-                    nameA = pA[m.keyA];
-                    nameB = pB[m.keyB];
+                    nameA = pASingle[m.keyA];
+                    nameB = pBSingle[m.keyB];
                 } else if (m.type === 'doppel') {
-                    nameA = `${pA[m.keysA[0]]} / ${pA[m.keysA[1]]}`;
-                    nameB = `${pB[m.keysB[0]]} / ${pB[m.keysB[1]]}`;
+                    nameA = `${pADouble[m.keysA[0]]} / ${pADouble[m.keysA[1]]}`;
+                    nameB = `${pBDouble[m.keysB[0]]} / ${pBDouble[m.keysB[1]]}`;
                 } else if (m.type === 'frei') {
-                    let heimChoices = [{ val: 'A', name: pA.A }, { val: 'B', name: pA.B }, { val: 'C', name: pA.C }];
-                    let gastChoices = [{ val: 'X', name: pB.X }, { val: 'Y', name: pB.Y }, { val: 'Z', name: pB.Z }];
+                    let heimChoices = [
+                        { val: 'A', name: pADouble.A },
+                        { val: 'B', name: pADouble.B },
+                        { val: 'C', name: pADouble.C }
+                    ];
+                    let gastChoices = [
+                        { val: 'X', name: pBDouble.X },
+                        { val: 'Y', name: pBDouble.Y },
+                        { val: 'Z', name: pBDouble.Z }
+                    ];
 
                     let curA1 = savedFreeA1 || 'A';
                     let curA2 = savedFreeA2 || 'B';
@@ -1546,6 +1657,13 @@
         document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = 'none');
         document.getElementById('manualVorgabeCard').style.display = 'none';
 
+        ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+            const field = document.getElementById(id);
+            if (field && !field.value.trim()) {
+                field.closest('.form-group').style.display = 'none';
+            }
+        });
+
         const element = document.getElementById('pdfContent');
         element.classList.add('pdf-export-mode');
 
@@ -1561,6 +1679,10 @@
             window.open(URL.createObjectURL(pdfBlob), '_blank');
             element.classList.remove('pdf-export-mode');
             document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
+            ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) field.closest('.form-group').style.display = '';
+            });
             applyQttrUIVisibility();
             switchTab('tab3');
         });
@@ -1621,21 +1743,35 @@
         const heimPlayers = [...new Set(getPlayersForTeam('heimName'))];
         const gastPlayers = [...new Set(getPlayersForTeam('gastName'))];
 
-        ['spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1'].forEach(id => {
+        const heimIds = ['spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2'];
+        const selectedHeim = heimIds.map(id => document.getElementById(id)?.value || '').filter(v => v !== '');
+
+        heimIds.forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
             const cur = sel.value;
-            sel.innerHTML = `<option value="">${id.includes('D1') ? 'Keiner (optional)' : 'Bitte wählen'}</option>`;
-            heimPlayers.forEach(p => sel.add(new Option(p, p)));
+            sel.innerHTML = `<option value="">${id.includes('_D') ? 'Keiner (optional)' : 'Bitte wählen'}</option>`;
+            heimPlayers.forEach(p => {
+                if (!selectedHeim.includes(p) || p === cur) {
+                    sel.add(new Option(p, p));
+                }
+            });
             sel.value = cur;
         });
 
-        ['spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1'].forEach(id => {
+        const gastIds = ['spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2'];
+        const selectedGast = gastIds.map(id => document.getElementById(id)?.value || '').filter(v => v !== '');
+
+        gastIds.forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
             const cur = sel.value;
-            sel.innerHTML = `<option value="">${id.includes('D1') ? 'Keiner (optional)' : 'Bitte wählen'}</option>`;
-            gastPlayers.forEach(p => sel.add(new Option(p, p)));
+            sel.innerHTML = `<option value="">${id.includes('_D') ? 'Keiner (optional)' : 'Bitte wählen'}</option>`;
+            gastPlayers.forEach(p => {
+                if (!selectedGast.includes(p) || p === cur) {
+                    sel.add(new Option(p, p));
+                }
+            });
             sel.value = cur;
         });
     }
@@ -1643,14 +1779,45 @@
     function updateAllDropdowns() { updateClubDropdowns(); updatePlayerDropdowns(); }
 
     document.addEventListener('DOMContentLoaded', () => {
+        // Burger-Menü Steuerung wiederhergestellt
+        const burgerBtn = document.getElementById('burgerBtn');
+        const drawerMenu = document.getElementById('drawerMenu');
+        if (burgerBtn && drawerMenu) {
+            burgerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                drawerMenu.classList.toggle('active');
+            });
+            document.addEventListener('click', (e) => {
+                if (!drawerMenu.contains(e.target) && !burgerBtn.contains(e.target)) {
+                    drawerMenu.classList.remove('active');
+                }
+            });
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('active');
+            });
+        });
+
         loadExcelFromGitHub();
         updateAllDropdowns();
         renderMatchTable();
 
         document.getElementById('spielklasse').addEventListener('change', () => { updateAllDropdowns(); renderMatchTable(); });
-        ['heimName', 'gastName', 'spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'doppelLetterA', 'spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'doppelLetterB'].forEach(id => {
+        [
+            'heimName', 'gastName',
+            'spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2', 'doppelLetterA1', 'doppelLetterA2',
+            'spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2', 'doppelLetterB1', 'doppelLetterB2'
+        ].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.addEventListener('change', () => { updatePlayerDropdowns(); renderMatchTable(); });
+            if (el) {
+                el.addEventListener('change', (e) => {
+                    syncDoubleLetters(e.target.id);
+                    updatePlayerDropdowns();
+                    renderMatchTable();
+                });
+            }
         });
 
         document.getElementById('btn-tab1').addEventListener('click', () => switchTab('tab1'));
@@ -1663,7 +1830,15 @@
 
         document.getElementById('btnAdminLogin').addEventListener('click', openAdminModal);
         document.getElementById('btnSettings').addEventListener('click', openSettingsModal);
-        document.getElementById('btnResetGame').addEventListener('click', () => { if (confirm('Spiel zurücksetzen?')) { document.getElementById('pokalForm').reset(); renderMatchTable(); switchTab('tab1'); } });
+        document.getElementById('btnResetGame').addEventListener('click', () => {
+            if (confirm('Spiel zurücksetzen?')) {
+                document.getElementById('pokalForm').reset();
+                updateAllDropdowns();
+                renderMatchTable();
+                switchTab('tab1');
+                drawerMenu.classList.remove('active');
+            }
+        });
 
         initCanvas('sigCanvasA', 'A');
         initCanvas('sigCanvasB', 'B');
