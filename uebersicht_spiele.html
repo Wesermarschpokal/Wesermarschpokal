@@ -3,6 +3,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Übersicht Spiele - Wesermarschpokal</title>
+    <!-- Library für direkten PDF-Download -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --bg-color: #f1f5f9;
@@ -100,6 +102,15 @@
     </div>
 </div>
 
+<!-- Unsichtbarer Container zur PDF-Generierung -->
+<div id="pdfHiddenContainer" style="display: none; position: absolute; left: -9999px; top: -9999px; width: 170mm; background: #fff; padding: 10px;">
+    <div style="border-bottom: 1.2px solid #0284c7; padding-bottom: 2mm; margin-bottom: 4mm; text-align: center;">
+        <h1 style="color: #0284c7; margin: 0; font-size: 14pt;">Tischtennis Kreisverband Wesermarsch e.V.</h1>
+        <p style="margin: 2px 0 0 0; color: #64748b; font-size: 9pt;">Spielformular Wesermarschpokal - Archivbericht</p>
+    </div>
+    <div id="pdfContentBody"></div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('gamesListContainer');
@@ -130,7 +141,49 @@
     });
 
     function openGamePdf(id) {
-        alert("Der PDF-Report für diesen Eintrag wird geöffnet (wird aus dem Hauptformular geladen).");
+        const archives = JSON.parse(localStorage.getItem('wesermarsch_spiele_archiv') || '[]');
+        const game = archives.find(g => g.id === id);
+        if (!game) {
+            alert("Spieldaten nicht gefunden.");
+            return;
+        }
+
+        const bodyContainer = document.getElementById('pdfContentBody');
+        bodyContainer.innerHTML = `
+            <div style="font-family: sans-serif; font-size: 10pt; color: #0f172a;">
+                <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                    <strong>Spieldetails:</strong><br>
+                    Datum: ${game.datum || 'k.A.'} | Uhrzeit: ${game.uhrzeit || 'k.A.'}<br>
+                    Spielklasse: ${game.spielklasse}<br>
+                    Heimmannschaft: <strong>${game.heimName}</strong><br>
+                    Gastmannschaft: <strong>${game.gastName}</strong>
+                </div>
+                <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; text-align: center; font-size: 12pt; font-weight: bold;">
+                    Endergebnis<br>
+                    Sätze: ${game.saetze} &nbsp;|&nbsp; Punkte: ${game.punkte} &nbsp;|&nbsp; Bälle: ${game.baelle}
+                </div>
+            </div>
+        `;
+
+        const hiddenContainer = document.getElementById('pdfHiddenContainer');
+        hiddenContainer.style.display = 'block';
+
+        const opt = {
+            margin: 15,
+            filename: `Spielbericht_${game.heimName}_vs_${game.gastName}_${game.datum || 'Pokal'}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(hiddenContainer).outputPdf('blob').then((pdfBlob) => {
+            hiddenContainer.style.display = 'none';
+            window.open(URL.createObjectURL(pdfBlob), '_blank');
+        }).catch(err => {
+            hiddenContainer.style.display = 'none';
+            console.error(err);
+            alert("Fehler beim Generieren des PDFs.");
+        });
     }
 </script>
 
