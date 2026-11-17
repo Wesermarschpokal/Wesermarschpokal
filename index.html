@@ -1755,7 +1755,6 @@
         } catch(e) { return []; }
     }
 
-    // Hilfsfunktion zur Normalisierung von Spalte B (z.B. "Jugend 19", "Mädchen 15", etc.)
     function normalizeClassTag(skStr) {
         const s = (skStr || '').trim().toLowerCase();
         if (s.includes('mädchen 19')) return 'Mädchen 19';
@@ -1783,7 +1782,6 @@
         const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
         const fullRoster = getFullRoster();
 
-        // Eindeutige Paare aus Verein (Spalte A) + normalisierter Klasse (Spalte B)
         const teamMap = new Map();
 
         fullRoster.forEach(row => {
@@ -1841,7 +1839,6 @@
             if (t.key !== hVal) gastSelect.add(new Option(t.displayName, t.key));
         });
 
-        // Auswahl wiederherstellen, falls noch gültig
         if ([...heimSelect.options].some(o => o.value === hVal)) heimSelect.value = hVal;
         if ([...gastSelect.options].some(o => o.value === gVal)) gastSelect.value = gVal;
     }
@@ -1854,7 +1851,6 @@
         const selectedTagLower = (selectedTag || '').toLowerCase();
         const fullRoster = getFullRoster();
 
-        // Basis-Vereinsnamen ermitteln (ohne römische/arabische Mannschaftsnummern am Ende, z.B. "Elsflether TB II" -> "elsflether tb")
         function getBaseClub(clubStr) {
             if (!clubStr) return '';
             return clubStr.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X|\d+)$/i, '').trim().toLowerCase();
@@ -1863,7 +1859,6 @@
         const baseSelectedClub = getBaseClub(selectedVerein);
         const isTeamDamen = /\s+DS$/i.test(selectedVerein) || selectedTagLower === 'damen';
 
-        // Start-Index der gewählten Mannschaft in der Excel-Tabelle finden
         let startIndex = -1;
         for (let i = 0; i < fullRoster.length; i++) {
             const rowTag = normalizeClassTag(fullRoster[i].spielklasse).toLowerCase();
@@ -1877,13 +1872,11 @@
 
         let players = [];
 
-        // Ab der gewählten Mannschaft abwärts alle spielberechtigten Spieler desselben Vereins in derselben Klasse einsammeln
         for (let i = startIndex; i < fullRoster.length; i++) {
             const row = fullRoster[i];
             const rowBaseClub = getBaseClub(row.verein);
             const rowTagLower = normalizeClassTag(row.spielklasse).toLowerCase();
 
-            // Sobald ein anderer Verein beginnt, stoppen
             if (rowBaseClub !== baseSelectedClub) {
                 break;
             }
@@ -1895,13 +1888,10 @@
             } else if (selectedTagLower === 'erwachsene') {
                 isEligible = (rowTagLower === 'erwachsene');
             } else if (selectedTagLower.startsWith('mädchen')) {
-                // Bei Mädchen 19, 15 oder 13 dürfen nur Spieler mit exakt demselben Mädchen-Vermerk ausgewählt werden
                 isEligible = (rowTagLower === selectedTagLower);
             } else if (selectedTagLower === 'jugend 19') {
-                // Bei Jugend 19 dürfen alle spielberechtigten Spieler der Jugend 19 (inkl. untere J19-Mannschaften) spielen
                 isEligible = (rowTagLower === 'jugend 19');
             } else if (selectedTagLower === 'jugend 15') {
-                // Bei Jugend 15 dürfen alle spielberechtigten Spieler der Jugend 15 (inkl. untere J15-Mannschaften) spielen
                 isEligible = (rowTagLower === 'jugend 15');
             } else if (selectedTagLower === 'jugend 13') {
                 isEligible = (rowTagLower === 'jugend 13');
