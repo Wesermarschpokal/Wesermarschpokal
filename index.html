@@ -1790,7 +1790,6 @@
             const classes = clubMap.get(clubName);
             let baseName = clubName;
             
-            // Wenn der Vereinsname / Mannschaftsname mit Leerzeichen DS endet -> (Damen) anzeigen
             if (/\s+DS$/i.test(baseName)) {
                 baseName = baseName.replace(/\s+DS$/i, '').trim() + ' (Damen)';
             }
@@ -1802,11 +1801,9 @@
                     if (cl.includes('mädchen 19') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 19'))) extraSubClasses.push('Mädchen 19');
                     else if (cl.includes('mädchen 15') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 15'))) extraSubClasses.push('Mädchen 15');
                     else if (cl.includes('mädchen 13') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 13'))) extraSubClasses.push('Mädchen 13');
-                    else if (cl.includes('jugend 15') && !extraSubClasses.some(x => x.toLowerCase().includes('jugend 15'))) extraSubClasses.push('Jugend 15');
                 } else if (selectedMainClass.includes('jugend 15')) {
                     if (cl.includes('mädchen 15') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 15'))) extraSubClasses.push('Mädchen 15');
                     else if (cl.includes('mädchen 13') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 13'))) extraSubClasses.push('Mädchen 13');
-                    else if (cl.includes('jugend 13') && !extraSubClasses.some(x => x.toLowerCase().includes('jugend 13'))) extraSubClasses.push('Jugend 13');
                 } else {
                     if (cl.includes('damen') && !baseName.toLowerCase().includes('damen')) {
                         if (!extraSubClasses.includes('Damen')) extraSubClasses.push('Damen');
@@ -1815,8 +1812,7 @@
             });
 
             let displayName = baseName;
-            // Wenn bereits (Damen) im Namen steht, keine zusätzlichen Duplikate erzeugen
-            if (extraSubClasses.length > 0 && !displayName.toLowerCase().includes('damen')) {
+            if (extraSubClasses.length > 0 && !displayName.toLowerCase().includes('damen') && !displayName.toLowerCase().includes('mädchen')) {
                 displayName += ` (${extraSubClasses.join(', ')})`;
             }
 
@@ -1834,9 +1830,7 @@
         const fullRoster = getFullRoster();
         const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
 
-        // Prüfen, ob die Mannschaft Damen oder Mädchen ist (entweder über Endung " DS" im Namen oder Spielklasse)
         const isTeamDamen = /\s+DS$/i.test(val);
-        let isTeamMaedchen = false;
 
         function matchesClass(itemSk) {
             itemSk = itemSk.toLowerCase();
@@ -1858,10 +1852,16 @@
         const baseSelectedClub = getBaseClub(val);
         let players = [];
         let startIndex = -1;
+        let targetMaedchenMatch = null; // Speichert exakt, welchen Mädchen-Vermerk die Mannschaft hat (z.B. "mädchen 19")
 
         for (let i = 0; i < fullRoster.length; i++) {
             if (fullRoster[i].verein === val && matchesClass(fullRoster[i].spielklasse)) {
                 startIndex = i;
+                let skLow = fullRoster[i].spielklasse.toLowerCase();
+                if (skLow.includes('mädchen 19')) targetMaedchenMatch = 'mädchen 19';
+                else if (skLow.includes('mädchen 15')) targetMaedchenMatch = 'mädchen 15';
+                else if (skLow.includes('mädchen 13')) targetMaedchenMatch = 'mädchen 13';
+                else if (skLow.includes('mädchen')) targetMaedchenMatch = 'mädchen';
                 break;
             }
         }
@@ -1874,14 +1874,18 @@
 
             if (rowBaseClub === baseSelectedClub && matchesClass(row.spielklasse)) {
                 let rowSkLower = row.spielklasse.toLowerCase();
-                if (rowSkLower.includes('mädchen')) {
-                    isTeamMaedchen = true;
-                }
-
-                // Filterbedingung: Wenn Mannschaft Damen/Mädchen ist, dürfen nur entsprechende Spieler angezeigt werden
                 let skipPlayer = false;
-                if (isTeamDamen || isTeamMaedchen || rowSkLower.includes('damen') || rowSkLower.includes('mädchen')) {
-                    if (!rowSkLower.includes('damen') && !rowSkLower.includes('mädchen')) {
+
+                if (isTeamDamen) {
+                    if (!rowSkLower.includes('damen')) skipPlayer = true;
+                } else if (targetMaedchenMatch) {
+                    // Nur Spieler anzeigen, die exakt denselben Mädchen-Vermerk in Spalte B haben
+                    if (!rowSkLower.includes(targetMaedchenMatch)) {
+                        skipPlayer = true;
+                    }
+                } else {
+                    // Wenn es keine Damen-/Mädchenmannschaft ist, keine Damen/Mädchen-Spieler einmischen, die für andere Klassen gelistet sind
+                    if (rowSkLower.includes('damen') || rowSkLower.includes('mädchen')) {
                         skipPlayer = true;
                     }
                 }
