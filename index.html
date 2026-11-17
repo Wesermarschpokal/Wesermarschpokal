@@ -671,7 +671,6 @@
 <body>
 
 <div class="container" id="pdfContent">
-    <!-- Burger-Menü in der linken oberen Ecke -->
     <div class="burger-menu-container hide-on-pdf">
         <button type="button" class="burger-btn" id="burgerBtn" title="Menü öffnen">
             <span></span>
@@ -693,7 +692,6 @@
         </div>
     </div>
 
-    <!-- Navigation Tab Leiste -->
     <div class="nav-tabs hide-on-pdf">
         <button type="button" class="tab-btn active" id="btn-tab1">1. Aufstellung</button>
         <button type="button" class="tab-btn" id="btn-tab2">2. Spielbericht</button>
@@ -701,7 +699,6 @@
     </div>
 
     <form id="pokalForm" onsubmit="return false;">
-        <!-- OBERFLÄCHE 1: STAMMDATEN -->
         <div id="tab1" class="tab-content active">
             <div class="grid-3 card">
                 <div class="form-group">
@@ -741,7 +738,6 @@
             </div>
 
             <div class="grid-2">
-                <!-- Heimmannschaft -->
                 <div class="card card-team-info">
                     <div class="card-header-flex">
                         <h3>Heimmannschaft (ABC)</h3>
@@ -749,9 +745,7 @@
                     </div>
                     <div class="form-group">
                         <label>Mannschaftsname</label>
-                        <select id="heimName">
-                            <option value="">Bitte Verein wählen</option>
-                        </select>
+                        <select id="heimName"><option value="">Bitte Verein wählen</option></select>
                     </div>
                     <div class="form-group">
                         <label>Spieler A</label>
@@ -769,27 +763,18 @@
                         <label>Nur Doppel für:</label>
                         <div class="double-input-group">
                             <select id="spielerA_D1"><option value="">Keiner (optional)</option></select>
-                            <select id="doppelLetterA1">
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                            </select>
+                            <select id="doppelLetterA1"><option value="A">A</option><option value="B">B</option><option value="C">C</option></select>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Nur Doppel für:</label>
                         <div class="double-input-group">
                             <select id="spielerA_D2"><option value="">Keiner (optional)</option></select>
-                            <select id="doppelLetterA2">
-                                <option value="B">B</option>
-                                <option value="A">A</option>
-                                <option value="C">C</option>
-                            </select>
+                            <select id="doppelLetterA2"><option value="B">B</option><option value="A">A</option><option value="C">C</option></select>
                         </div>
                     </div>
                 </div>
 
-                <!-- Gastmannschaft -->
                 <div class="card card-team-info">
                     <div class="card-header-flex">
                         <h3>Gastmannschaft (XYZ)</h3>
@@ -797,9 +782,7 @@
                     </div>
                     <div class="form-group">
                         <label>Mannschaftsname</label>
-                        <select id="gastName">
-                            <option value="">Bitte Verein wählen</option>
-                        </select>
+                        <select id="gastName"><option value="">Bitte Verein wählen</option></select>
                     </div>
                     <div class="form-group">
                         <label>Spieler X</label>
@@ -817,22 +800,14 @@
                         <label>Nur Doppel für:</label>
                         <div class="double-input-group">
                             <select id="spielerB_D1"><option value="">Keiner (optional)</option></select>
-                            <select id="doppelLetterB1">
-                                <option value="X">X</option>
-                                <option value="Y">Y</option>
-                                <option value="Z">Z</option>
-                            </select>
+                            <select id="doppelLetterB1"><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option></select>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Nur Doppel für:</label>
                         <div class="double-input-group">
                             <select id="spielerB_D2"><option value="">Keiner (optional)</option></select>
-                            <select id="doppelLetterB2">
-                                <option value="Y">Y</option>
-                                <option value="X">X</option>
-                                <option value="Z">Z</option>
-                            </select>
+                            <select id="doppelLetterB2"><option value="Y">Y</option><option value="X">X</option><option value="Z">Z</option></select>
                         </div>
                     </div>
                 </div>
@@ -842,7 +817,6 @@
             </div>
         </div>
 
-        <!-- OBERFLÄCHE 2: SPIELBERICHT -->
         <div id="tab2" class="tab-content">
             <div id="matchCardContainer"></div>
             
@@ -860,7 +834,6 @@
             </div>
         </div>
 
-        <!-- OBERFLÄCHE 3: ABSCHLUSS -->
         <div id="tab3" class="tab-content">
             <div class="card">
                 <h3>Endergebnis</h3>
@@ -912,7 +885,6 @@
     <div id="pdfFooterHint" class="pdf-footer-hint">Die Vorgabe wurde mit Ligenzugehörigkeit errechnet</div>
 </div>
 
-<!-- Modal: Spielsystem -->
 <div class="modal-overlay hide-on-pdf" id="systemModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -939,7 +911,6 @@
     </div>
 </div>
 
-<!-- Modal: Admin Login -->
 <div class="modal-overlay hide-on-pdf" id="adminLoginModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -961,7 +932,6 @@
     </div>
 </div>
 
-<!-- Modal: Einstellungen -->
 <div class="modal-overlay hide-on-pdf" id="settingsModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -1081,7 +1051,6 @@
         maxVorgabe = parseInt(localStorage.getItem('wesermarsch_max_vorgabe'), 10) || 6;
     }
 
-    // --- ZENTRALES SPIEL-ARCHIV FÜR "ÜBERSICHT SPIELE" MIT PDF-ERSTELLUNG ---
     function saveFinishedGameToArchive(pdfDataUri = '') {
         try {
             const datum = document.getElementById('datum').value || '';
@@ -1117,7 +1086,7 @@
                 baelle: `${totalBaelleA} : ${totalBaelleB}`,
                 saetze: totalSaetze,
                 punkte: totalPunkte,
-                pdfData: pdfDataUri, // PDF im Datensatz hinterlegt
+                pdfData: pdfDataUri,
                 timestamp: Date.now()
             };
 
@@ -1635,7 +1604,6 @@
         if (id === 'sigCanvasA') sigSignedA = false; else sigSignedB = false;
     }
 
-    // --- ABSCHLIESSEN MIT AUTOMATISCHER PDF-ERSTELLUNG & HINTERLEGUNG IM DATENSATZ ---
     function validateAndFinish() {
         const alertBox = document.getElementById('validationAlert');
         alertBox.style.display = 'none'; alertBox.innerHTML = '';
@@ -1651,7 +1619,6 @@
             alertBox.innerHTML = "<strong>Abschluss nicht möglich:</strong><br>• " + errors.join("<br>• ");
             alertBox.style.display = 'block';
         } else {
-            // PDF im Hintergrund generieren und im Datensatz hinterlegen
             generatePdfBlobAndSave();
         }
     }
@@ -1682,9 +1649,14 @@
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        html2pdf().set(opt).from(element).outputPdf('datauristring').then((pdfDataUri) => {
-            // Im Archiv speichern inklusive des erstellten PDFs
-            saveFinishedGameToArchive(pdfDataUri);
+        html2pdf().set(opt).from(element).outputPdf('blob').then((pdfBlob) => {
+            let blobUrl = URL.createObjectURL(pdfBlob);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(pdfBlob);
+            reader.onloadend = function() {
+                saveFinishedGameToArchive(reader.result);
+            }
 
             element.classList.remove('pdf-export-mode');
             document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
@@ -1699,13 +1671,7 @@
             document.getElementById('btnAbschliessen').style.display = 'none';
             document.getElementById('btnPdfPrint').style.display = 'inline-block';
             
-            // PDF direkt im PDF-Reader öffnen
-            let win = window.open();
-            if (win) {
-                win.document.write(`<iframe src="${pdfDataUri}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-            }
-
-            alert('Spiel erfolgreich abgeschlossen, PDF im Datensatz hinterlegt und im PDF-Reader geöffnet!');
+            window.open(blobUrl, '_blank');
         }).catch(err => {
             console.error(err);
             element.classList.remove('pdf-export-mode');
