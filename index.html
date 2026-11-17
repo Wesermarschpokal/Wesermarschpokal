@@ -1183,30 +1183,24 @@
         }
     }
 
-    // Hilfsfunktion: Gibt den reinen Spielernamen zurück (ignoriert den angehängten Klammerzusatz für Vergleiche)
-    function cleanPlayerName(fullName) {
-        if (!fullName) return '';
-        return fullName.replace(/\s*\([^)]*\)$/, '').trim();
-    }
-
     function getPlayerName(team, letter, isDouble = false) {
         if (isDouble) {
             if (team === 'A') {
                 const sub1 = document.getElementById('spielerA_D1').value.trim();
                 const let1 = document.getElementById('doppelLetterA1').value;
-                if (sub1 && letter === let1) return cleanPlayerName(sub1);
+                if (sub1 && letter === let1) return sub1;
 
                 const sub2 = document.getElementById('spielerA_D2').value.trim();
                 const let2 = document.getElementById('doppelLetterA2').value;
-                if (sub2 && letter === let2) return cleanPlayerName(sub2);
+                if (sub2 && letter === let2) return sub2;
             } else if (team === 'B') {
                 const sub1 = document.getElementById('spielerB_D1').value.trim();
                 const let1 = document.getElementById('doppelLetterB1').value;
-                if (sub1 && letter === let1) return cleanPlayerName(sub1);
+                if (sub1 && letter === let1) return sub1;
 
                 const sub2 = document.getElementById('spielerB_D2').value.trim();
                 const let2 = document.getElementById('doppelLetterB2').value;
-                if (sub2 && letter === let2) return cleanPlayerName(sub2);
+                if (sub2 && letter === let2) return sub2;
             }
         }
 
@@ -1218,7 +1212,7 @@
         if (inputId) {
             const selectEl = document.getElementById(inputId);
             if (selectEl && selectEl.value.trim() !== '') {
-                return cleanPlayerName(selectEl.value.trim());
+                return selectEl.value.trim();
             }
         }
 
@@ -1237,7 +1231,7 @@
         if (!rosterJson) return 0;
         try {
             const roster = JSON.parse(rosterJson);
-            const found = roster.find(item => cleanPlayerName(item.spieler).toLowerCase() === playerName.toLowerCase());
+            const found = roster.find(item => item.spieler.toLowerCase() === playerName.toLowerCase());
             if (found) return found.qttr || 0;
         } catch (e) {}
         return 0;
@@ -1280,8 +1274,8 @@
 
     function getFilteredOptions(choices, selectedVal, excludedVal) {
         return choices.map(c => {
-            if (cleanPlayerName(c.val) === cleanPlayerName(excludedVal) && cleanPlayerName(c.val) !== cleanPlayerName(selectedVal)) return '';
-            let sel = (cleanPlayerName(c.val) === cleanPlayerName(selectedVal)) ? ' selected' : '';
+            if (c.val === excludedVal && c.val !== selectedVal) return '';
+            let sel = (c.val === selectedVal) ? ' selected' : '';
             return `<option value="${c.val}"${sel}>${c.name}</option>`;
         }).join('');
     }
@@ -1724,25 +1718,30 @@
         }).catch(() => {});
     }
 
-    // Liefert alle Spieler, die für die ausgewählte Haupt-Spielklasse infrage kommen (inkl. erlaubter Unterklassen)
-    function getRosterForSelectedClass() {
+    function getFullRoster() {
         try {
-            const roster = JSON.parse(localStorage.getItem('wesermarsch_pokal_roster') || '[]');
-            const sk = document.getElementById('spielklasse').value.trim().toLowerCase();
-            return roster.filter(i => {
-                let itemSk = i.spielklasse.toLowerCase();
-                if (sk === 'erwachsene') {
-                    return itemSk === 'erwachsene' || itemSk === 'damen';
-                } else if (sk.includes('jugend 19')) {
-                    return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
-                } else if (sk.includes('jugend 15')) {
-                    return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
-                }
-                return itemSk.includes(sk);
-            });
+            return JSON.parse(localStorage.getItem('wesermarsch_pokal_roster') || '[]');
         } catch(e) { return []; }
     }
 
+    // Liefert alle für die Haupt-Spielklasse relevanten Zeilen aus der Excel-Liste (inkl. erlaubter Unterklassen)
+    function getRosterForSelectedClass() {
+        const roster = getFullRoster();
+        const sk = document.getElementById('spielklasse').value.trim().toLowerCase();
+        return roster.filter(i => {
+            let itemSk = i.spielklasse.toLowerCase();
+            if (sk === 'erwachsene') {
+                return itemSk === 'erwachsene' || itemSk === 'damen';
+            } else if (sk.includes('jugend 19')) {
+                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
+            } else if (sk.includes('jugend 15')) {
+                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
+            }
+            return itemSk.includes(sk);
+        });
+    }
+
+    // Baut die Vereinsliste auf, wobei bei Jugend-Klassen die spezifische Unterklasse in Klammern am Namen steht
     function updateClubDropdowns() {
         const heimSelect = document.getElementById('heimName');
         const gastSelect = document.getElementById('gastName');
@@ -1751,25 +1750,72 @@
         heimSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
         gastSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
 
-        const clubs = [...new Set(getRosterForSelectedClass().map(i => i.verein))].sort();
-        clubs.forEach(c => {
-            if (c !== gVal) heimSelect.add(new Option(c, c));
-            if (c !== hVal) gastSelect.add(new Option(c, c));
+        const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
+        const roster = getRosterForSelectedClass();
+        const clubMap = new Map();
+
+        roster.forEach(i => {
+            if (!clubMap.has(i.verein)) {
+                clubMap.set(i.verein, new Set());
+            }
+            clubMap.get(i.verein).add(i.spielklasse);
         });
-        heimSelect.value = hVal; gastSelect.value = gVal;
+
+        const sortedClubs = [...clubMap.keys()].sort();
+
+        sortedClubs.forEach(clubName => {
+            const classes = clubMap.get(clubName);
+            let displayName = clubName;
+
+            if (selectedMainClass.includes('jugend 19')) {
+                let subClasses = [...classes].filter(c => {
+                    let cl = c.toLowerCase();
+                    return cl.includes('jugend 15') || cl.includes('mädchen 15');
+                });
+                if (subClasses.length > 0) {
+                    displayName += ` (${subClasses.join(', ')})`;
+                }
+            } else if (selectedMainClass.includes('jugend 15')) {
+                let subClasses = [...classes].filter(c => {
+                    let cl = c.toLowerCase();
+                    return cl.includes('jugend 13') || cl.includes('mädchen 13');
+                });
+                if (subClasses.length > 0) {
+                    displayName += ` (${subClasses.join(', ')})`;
+                }
+            }
+
+            if (clubName !== gVal) heimSelect.add(new Option(displayName, clubName));
+            if (clubName !== hVal) gastSelect.add(new Option(displayName, clubName));
+        });
+
+        heimSelect.value = hVal; 
+        gastSelect.value = gVal;
     }
 
-    // Liefert alle Spieler des Vereins für die gewählte Spielklasse UND nachfolgende Mannschaften (inkl. Klassenbezeichnung in Klammern)
+    // Liefert alle Spieler, die zur gewählten Mannschaft ODER in der Excel-Liste direkt darunter (gleicher Verein & Spielklasse) stehen
     function getPlayersForTeam(teamSelectId) {
         const val = document.getElementById(teamSelectId).value;
         if (!val) return [];
-        const filtered = getRosterForSelectedClass().filter(i => i.verein === val);
-        return filtered.map(i => {
-            return {
-                fullName: `${i.spieler} (${i.spielklasse})`,
-                cleanName: i.spieler
-            };
+        const fullRoster = getFullRoster();
+        const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
+
+        // 1. Finde alle Zeilen des Vereins in der gewählten Spielklasse oder erlaubten Unterklassen
+        let relevantRows = fullRoster.filter(i => {
+            if (i.verein !== val) return false;
+            let itemSk = i.spielklasse.toLowerCase();
+            if (selectedMainClass === 'erwachsene') {
+                return itemSk === 'erwachsene' || itemSk === 'damen';
+            } else if (selectedMainClass.includes('jugend 19')) {
+                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
+            } else if (selectedMainClass.includes('jugend 15')) {
+                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
+            }
+            return itemSk.includes(selectedMainClass);
         });
+
+        // Wir geben einfach die Spielernamen ohne Klammerzusatz zurück
+        return relevantRows.map(i => i.spieler);
     }
 
     function updatePlayerDropdowns() {
@@ -1777,50 +1823,35 @@
         const gastPlayers = getPlayersForTeam('gastName');
 
         const heimIds = ['spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2'];
-        const selectedHeim = heimIds.map(id => cleanPlayerName(document.getElementById(id)?.value || '')).filter(v => v !== '');
+        const selectedHeim = heimIds.map(id => document.getElementById(id)?.value || '').filter(v => v !== '');
 
         heimIds.forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
-            const cur = cleanPlayerName(sel.value);
+            const cur = sel.value;
             sel.innerHTML = `<option value="">${id.includes('_D') ? 'Keiner (optional)' : 'Bitte wählen'}</option>`;
             heimPlayers.forEach(p => {
-                if (!selectedHeim.includes(cleanPlayerName(p.cleanName)) || cleanPlayerName(p.cleanName) === cur) {
-                    sel.add(new Option(p.fullName, p.cleanName));
+                if (!selectedHeim.includes(p) || p === cur) {
+                    sel.add(new Option(p, p));
                 }
             });
-            // Wert wiederherstellen falls vorhanden
-            if (cur) {
-                for (let opt of sel.options) {
-                    if (cleanPlayerName(opt.value) === cur || cleanPlayerName(opt.text) === cur) {
-                        sel.value = opt.value;
-                        break;
-                    }
-                }
-            }
+            sel.value = cur;
         });
 
         const gastIds = ['spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2'];
-        const selectedGast = gastIds.map(id => cleanPlayerName(document.getElementById(id)?.value || '')).filter(v => v !== '');
+        const selectedGast = gastIds.map(id => document.getElementById(id)?.value || '').filter(v => v !== '');
 
         gastIds.forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
-            const cur = cleanPlayerName(sel.value);
+            const cur = sel.value;
             sel.innerHTML = `<option value="">${id.includes('_D') ? 'Keiner (optional)' : 'Bitte wählen'}</option>`;
             gastPlayers.forEach(p => {
-                if (!selectedGast.includes(cleanPlayerName(p.cleanName)) || cleanPlayerName(p.cleanName) === cur) {
-                    sel.add(new Option(p.fullName, p.cleanName));
+                if (!selectedGast.includes(p) || p === cur) {
+                    sel.add(new Option(p, p));
                 }
             });
-            if (cur) {
-                for (let opt of sel.options) {
-                    if (cleanPlayerName(opt.value) === cur || cleanPlayerName(opt.text) === cur) {
-                        sel.value = opt.value;
-                        break;
-                    }
-                }
-            }
+            sel.value = cur;
         });
     }
 
@@ -1867,7 +1898,6 @@
 
         document.getElementById('spielklasse').addEventListener('change', () => { updateAllDropdowns(); renderMatchTable(); });
         
-        // Wenn Heimmannschaft / Gastmannschaft gewechselt wird, Spielerdropdowns aktualisieren
         document.getElementById('heimName').addEventListener('change', () => { updatePlayerDropdowns(); renderMatchTable(); });
         document.getElementById('gastName').addEventListener('change', () => { updatePlayerDropdowns(); renderMatchTable(); });
 
