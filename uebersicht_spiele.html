@@ -65,12 +65,6 @@
             color: var(--primary);
         }
 
-        .button-group {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
         .pdf-icon-btn {
             background-color: #22c55e;
             color: white;
@@ -84,20 +78,9 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
+            white-space: nowrap;
         }
         .pdf-icon-btn:hover { background-color: #16a34a; }
-
-        .delete-btn {
-            background-color: #ef4444;
-            color: white;
-            border: none;
-            padding: 8px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-        .delete-btn:hover { background-color: #dc2626; }
 
         .empty-state {
             text-align: center;
@@ -145,6 +128,16 @@
             return;
         }
 
+        // Nach Datum absteigend sortieren (neueste oben / z.B. 2027 vor 2026, 17.11. vor 16.11.)
+        archives.sort((a, b) => {
+            let dateA = a.datum || '';
+            let dateB = b.datum || '';
+            if (dateA !== dateB) {
+                return dateB.localeCompare(dateA); // Absteigend
+            }
+            return (b.timestamp || 0) - (a.timestamp || 0); // Fallback: Erstellungszeitpunkt absteigend
+        });
+
         let html = '';
         archives.forEach(game => {
             const formattedDate = game.datum ? game.datum.split('-').reverse().join('.') : 'Unbekannt';
@@ -155,9 +148,8 @@
                         <div>🏓 <strong>Begegnung:</strong> ${game.heimName} vs. ${game.gastName} (${game.spielklasse})</div>
                         <div>📊 <strong>Bälle:</strong> ${game.baelle} &nbsp;|&nbsp; <strong>Sätze:</strong> ${game.saetze} &nbsp;|&nbsp; <strong>Spiele:</strong> ${game.punkte}</div>
                     </div>
-                    <div class="button-group">
+                    <div>
                         <button class="pdf-icon-btn" onclick="openGamePdf('${game.id}')">📄 PDF Report</button>
-                        <button class="delete-btn" onclick="deleteGameRecord('${game.id}')" title="Eintrag löschen">🗑️</button>
                     </div>
                 </div>
             `;
@@ -185,15 +177,6 @@
                 });
         } else {
             alert("Für diesen Eintrag ist kein PDF im Datensatz hinterlegt.");
-        }
-    }
-
-    function deleteGameRecord(id) {
-        if (confirm('Möchten Sie diesen Spiele-Eintrag wirklich aus dem Archiv löschen?')) {
-            let archives = JSON.parse(localStorage.getItem('wesermarsch_spiele_archiv') || '[]');
-            archives = archives.filter(g => g.id !== id);
-            localStorage.setItem('wesermarsch_spiele_archiv', JSON.stringify(archives));
-            renderGamesList();
         }
     }
 </script>
