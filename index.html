@@ -1081,8 +1081,8 @@
         maxVorgabe = parseInt(localStorage.getItem('wesermarsch_max_vorgabe'), 10) || 6;
     }
 
-    // --- ZENTRALES SPIEL-ARCHIV FÜR "ÜBERSICHT SPIELE" ---
-    function saveFinishedGameToArchive() {
+    // --- ZENTRALES SPIEL-ARCHIV FÜR "ÜBERSICHT SPIELE" MIT PDF-ERSTELLUNG ---
+    function saveFinishedGameToArchive(pdfDataUri = '') {
         try {
             const datum = document.getElementById('datum').value || '';
             const uhrzeit = document.getElementById('uhrzeit').value || '';
@@ -1117,6 +1117,7 @@
                 baelle: `${totalBaelleA} : ${totalBaelleB}`,
                 saetze: totalSaetze,
                 punkte: totalPunkte,
+                pdfData: pdfDataUri, // PDF im Datensatz hinterlegt
                 timestamp: Date.now()
             };
 
@@ -1634,6 +1635,7 @@
         if (id === 'sigCanvasA') sigSignedA = false; else sigSignedB = false;
     }
 
+    // --- ABSCHLIESSEN MIT AUTOMATISCHER PDF-ERSTELLUNG & HINTERLEGUNG IM DATENSATZ ---
     function validateAndFinish() {
         const alertBox = document.getElementById('validationAlert');
         alertBox.style.display = 'none'; alertBox.innerHTML = '';
@@ -1649,12 +1651,69 @@
             alertBox.innerHTML = "<strong>Abschluss nicht möglich:</strong><br>• " + errors.join("<br>• ");
             alertBox.style.display = 'block';
         } else {
+            // PDF im Hintergrund generieren und im Datensatz hinterlegen
+            generatePdfBlobAndSave();
+        }
+    }
+
+    function generatePdfBlobAndSave() {
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'block');
+        document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = 'none');
+        
+        if (qttrVorgabeActive || document.getElementById('fixedVorgabeTeam').value === 'Keine') {
+            document.getElementById('manualVorgabeCard').style.display = 'none';
+        }
+
+        ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+            const field = document.getElementById(id);
+            if (field && !field.value.trim()) {
+                field.closest('.form-group').style.display = 'none';
+            }
+        });
+
+        const element = document.getElementById('pdfContent');
+        element.classList.add('pdf-export-mode');
+
+        const opt = {
+            margin: 20,
+            filename: `Spielbericht_${document.getElementById('datum').value || 'Pokal'}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).outputPdf('datauristring').then((pdfDataUri) => {
+            // Im Archiv speichern inklusive des erstellten PDFs
+            saveFinishedGameToArchive(pdfDataUri);
+
+            element.classList.remove('pdf-export-mode');
+            document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
+            ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) field.closest('.form-group').style.display = '';
+            });
+            applyQttrUIVisibility();
+            switchTab('tab3');
+
             isFormCompleted = true;
-            saveFinishedGameToArchive();
             document.getElementById('btnAbschliessen').style.display = 'none';
             document.getElementById('btnPdfPrint').style.display = 'inline-block';
-            alert('Spiel erfolgreich abgeschlossen und in der "Übersicht Spiele" gespeichert!');
-        }
+            
+            // PDF direkt im PDF-Reader öffnen
+            let win = window.open();
+            if (win) {
+                win.document.write(`<iframe src="${pdfDataUri}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+            }
+
+            alert('Spiel erfolgreich abgeschlossen, PDF im Datensatz hinterlegt und im PDF-Reader geöffnet!');
+        }).catch(err => {
+            console.error(err);
+            element.classList.remove('pdf-export-mode');
+            document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
+            applyQttrUIVisibility();
+            switchTab('tab3');
+            alert("Fehler beim Generieren des PDFs.");
+        });
     }
 
     function exportToPDF() {
@@ -1791,14 +1850,12 @@
         gastSelect.value = gVal;
     }
 
-    // --- NEUE VOLLSTÄNDIG ERNEUERTE SPIELERAUSWAHL-FUNKTION ---
     function getPlayersForTeam(teamSelectId) {
         const val = document.getElementById(teamSelectId).value;
         if (!val) return [];
         const fullRoster = getFullRoster();
         const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
 
-        // Prüfen, ob die Spielklasse übereinstimmt (inkl. erlaubter Unterklassen)
         function matchesClass(itemSk) {
             itemSk = itemSk.toLowerCase();
             if (selectedMainClass === 'erwachsene') {
@@ -1811,7 +1868,6 @@
             return itemSk.includes(selectedMainClass);
         }
 
-        // Hilfsfunktion: Bereinigt den Vereinsnamen von angehängten Zahlen oder römischen Ziffern (z.B. "TTC Elsfleth I" -> "ttc elsfleth")
         function getBaseClub(clubStr) {
             if (!clubStr) return '';
             return clubStr.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X|\d+)$/i, '').trim().toLowerCase();
@@ -1821,7 +1877,6 @@
         let players = [];
         let startIndex = -1;
 
-        // 1. Finde den ersten Index in der Excel-Liste, der exakt den gleichen Vermerk in Spalte A hat wie die ausgewählte Mannschaft
         for (let i = 0; i < fullRoster.length; i++) {
             if (fullRoster[i].verein === val && matchesClass(fullRoster[i].spielklasse)) {
                 startIndex = i;
@@ -1831,8 +1886,6 @@
 
         if (startIndex === -1) return [];
 
-        // 2. Gehe ab diesem Startindex nach unten und sammle alle Spieler ein,
-        //    deren Basis-Verein übereinstimmt und die zur gleichen Spielklasse gehören.
         for (let i = startIndex; i < fullRoster.length; i++) {
             let row = fullRoster[i];
             let rowBaseClub = getBaseClub(row.verein);
@@ -1842,7 +1895,6 @@
                     players.push(row.spieler);
                 }
             } else {
-                // Sobald ein anderer Verein oder eine andere Spielklasse in der Liste folgt, stoppen
                 break;
             }
         }
@@ -1894,7 +1946,6 @@
         applyQttrUIVisibility();
         updatePdfFooterHint();
 
-        // Burger-Menü Steuerung
         const burgerBtn = document.getElementById('burgerBtn');
         const drawerMenu = document.getElementById('drawerMenu');
         if (burgerBtn && drawerMenu) {
