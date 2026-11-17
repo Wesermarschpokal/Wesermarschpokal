@@ -1051,12 +1051,18 @@
         maxVorgabe = parseInt(localStorage.getItem('wesermarsch_max_vorgabe'), 10) || 6;
     }
 
+    function getSelectedTeamDisplayName(selectId) {
+        const sel = document.getElementById(selectId);
+        if (!sel || sel.selectedIndex <= 0) return selectId === 'heimName' ? 'Heim' : 'Gast';
+        return sel.options[sel.selectedIndex].text.trim();
+    }
+
     function saveFinishedGameToArchive(pdfDataUri = '') {
         try {
             const datum = document.getElementById('datum').value || '';
             const uhrzeit = document.getElementById('uhrzeit').value || '';
-            const heimName = document.getElementById('heimName').value || 'Heim';
-            const gastName = document.getElementById('gastName').value || 'Gast';
+            const heimName = getSelectedTeamDisplayName('heimName');
+            const gastName = getSelectedTeamDisplayName('gastName');
             const spielklasse = document.getElementById('spielklasse').value || 'Erwachsene';
 
             let totalBaelleA = 0, totalBaelleB = 0;
@@ -1550,8 +1556,8 @@
         document.getElementById('endSaetze').value = `${totalSaetzeA} : ${totalSaetzeB}`;
         document.getElementById('endPunkte').value = `${totalPunkteA} : ${totalPunkteB}`;
 
-        const heim = document.getElementById('heimName').value.trim() || 'Heimmannschaft';
-        const gast = document.getElementById('gastName').value.trim() || 'Gastmannschaft';
+        const heim = getSelectedTeamDisplayName('heimName') || 'Heimmannschaft';
+        const gast = getSelectedTeamDisplayName('gastName') || 'Gastmannschaft';
         const siegerField = document.getElementById('sieger');
 
         if (siegerField) {
@@ -1749,149 +1755,160 @@
         } catch(e) { return []; }
     }
 
-    function getRosterForSelectedClass() {
-        const roster = getFullRoster();
-        const sk = document.getElementById('spielklasse').value.trim().toLowerCase();
-        return roster.filter(i => {
-            let itemSk = i.spielklasse.toLowerCase();
-            if (sk === 'erwachsene') {
-                return itemSk === 'erwachsene' || itemSk === 'damen';
-            } else if (sk.includes('jugend 19')) {
-                return itemSk.includes('jugend 19') || itemSk.includes('mädchen 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
-            } else if (sk.includes('jugend 15')) {
-                return itemSk.includes('jugend 15') || itemSk.includes('mädchen 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
-            }
-            return itemSk.includes(sk);
-        });
+    // Hilfsfunktion zur Normalisierung von Spalte B (z.B. "Jugend 19", "Mädchen 15", etc.)
+    function normalizeClassTag(skStr) {
+        const s = (skStr || '').trim().toLowerCase();
+        if (s.includes('mädchen 19')) return 'Mädchen 19';
+        if (s.includes('mädchen 15')) return 'Mädchen 15';
+        if (s.includes('mädchen 13')) return 'Mädchen 13';
+        if (s.includes('jugend 19')) return 'Jugend 19';
+        if (s.includes('jugend 15')) return 'Jugend 15';
+        if (s.includes('jugend 13')) return 'Jugend 13';
+        if (s === 'damen') return 'Damen';
+        if (s === 'erwachsene') return 'Erwachsene';
+        return skStr.trim();
     }
 
     function updateClubDropdowns() {
         const heimSelect = document.getElementById('heimName');
         const gastSelect = document.getElementById('gastName');
         if (!heimSelect || !gastSelect) return;
-        const hVal = heimSelect.value, gVal = gastSelect.value;
+
+        const hVal = heimSelect.value;
+        const gVal = gastSelect.value;
+
         heimSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
         gastSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
 
         const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
-        const roster = getRosterForSelectedClass();
-        const clubMap = new Map();
+        const fullRoster = getFullRoster();
 
-        roster.forEach(i => {
-            if (!clubMap.has(i.verein)) {
-                clubMap.set(i.verein, new Set());
+        // Eindeutige Paare aus Verein (Spalte A) + normalisierter Klasse (Spalte B)
+        const teamMap = new Map();
+
+        fullRoster.forEach(row => {
+            const tag = normalizeClassTag(row.spielklasse);
+            const tagLower = tag.toLowerCase();
+            let include = false;
+
+            if (selectedMainClass === 'erwachsene') {
+                include = (tagLower === 'erwachsene' || tagLower === 'damen');
+            } else if (selectedMainClass === 'jugend 19') {
+                include = (tagLower === 'jugend 19' || tagLower === 'mädchen 19' || tagLower === 'jugend 15' || tagLower === 'mädchen 15');
+            } else if (selectedMainClass === 'jugend 15') {
+                include = (tagLower === 'jugend 15' || tagLower === 'mädchen 15' || tagLower === 'jugend 13' || tagLower === 'mädchen 13');
             }
-            clubMap.get(i.verein).add(i.spielklasse);
+
+            if (include) {
+                const uniqueKey = `${row.verein}||${tag}`;
+                if (!teamMap.has(uniqueKey)) {
+                    let displayName = row.verein;
+
+                    if (selectedMainClass === 'erwachsene') {
+                        if (/\s+DS$/i.test(displayName)) {
+                            displayName = displayName.replace(/\s+DS$/i, '').trim() + ' (Damen)';
+                        } else if (tagLower === 'damen' && !displayName.toLowerCase().includes('damen')) {
+                            displayName += ' (Damen)';
+                        }
+                    } else if (selectedMainClass === 'jugend 19') {
+                        if (tagLower === 'jugend 15') {
+                            displayName += ' (Jugend 15)';
+                        } else if (tagLower === 'mädchen 15') {
+                            displayName += ' (Mädchen 15)';
+                        }
+                    } else if (selectedMainClass === 'jugend 15') {
+                        if (tagLower === 'jugend 13') {
+                            displayName += ' (Jugend 13)';
+                        } else if (tagLower === 'mädchen 13') {
+                            displayName += ' (Mädchen 13)';
+                        }
+                    }
+
+                    teamMap.set(uniqueKey, {
+                        key: uniqueKey,
+                        verein: row.verein,
+                        tag: tag,
+                        displayName: displayName
+                    });
+                }
+            }
         });
 
-        const sortedClubs = [...clubMap.keys()].sort();
+        const sortedTeams = [...teamMap.values()].sort((a, b) => a.displayName.localeCompare(b.displayName, 'de'));
 
-        sortedClubs.forEach(clubName => {
-            const classes = clubMap.get(clubName);
-            let baseName = clubName;
-            
-            if (/\s+DS$/i.test(baseName)) {
-                baseName = baseName.replace(/\s+DS$/i, '').trim() + ' (Damen)';
-            }
-
-            let extraSubClasses = [];
-            classes.forEach(c => {
-                let cl = c.toLowerCase();
-                if (selectedMainClass.includes('jugend 19')) {
-                    if (cl.includes('jugend 15') && !extraSubClasses.some(x => x.toLowerCase().includes('jugend 15'))) extraSubClasses.push('Jugend 15');
-                    else if (cl.includes('mädchen 15') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 15'))) extraSubClasses.push('Mädchen 15');
-                } else if (selectedMainClass.includes('jugend 15')) {
-                    if (cl.includes('jugend 13') && !extraSubClasses.some(x => x.toLowerCase().includes('jugend 13'))) extraSubClasses.push('Jugend 13');
-                    else if (cl.includes('mädchen 13') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 13'))) extraSubClasses.push('Mädchen 13');
-                }
-            });
-
-            let displayName = baseName;
-            if (extraSubClasses.length > 0) {
-                // Nur hinzufügen, wenn der Vermerk nicht schon im Namen enthalten ist
-                let subClassStr = extraSubClasses.join(', ');
-                if (!displayName.toLowerCase().includes(subClassStr.toLowerCase())) {
-                    displayName += ` (${subClassStr})`;
-                }
-            }
-
-            if (clubName !== gVal) heimSelect.add(new Option(displayName, clubName));
-            if (clubName !== hVal) gastSelect.add(new Option(displayName, clubName));
+        sortedTeams.forEach(t => {
+            if (t.key !== gVal) heimSelect.add(new Option(t.displayName, t.key));
+            if (t.key !== hVal) gastSelect.add(new Option(t.displayName, t.key));
         });
 
-        heimSelect.value = hVal; 
-        gastSelect.value = gVal;
+        // Auswahl wiederherstellen, falls noch gültig
+        if ([...heimSelect.options].some(o => o.value === hVal)) heimSelect.value = hVal;
+        if ([...gastSelect.options].some(o => o.value === gVal)) gastSelect.value = gVal;
     }
 
     function getPlayersForTeam(teamSelectId) {
-        const val = document.getElementById(teamSelectId).value;
-        if (!val) return [];
+        const rawVal = document.getElementById(teamSelectId).value;
+        if (!rawVal) return [];
+
+        const [selectedVerein, selectedTag] = rawVal.split('||');
+        const selectedTagLower = (selectedTag || '').toLowerCase();
         const fullRoster = getFullRoster();
-        const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
 
-        const isTeamDamen = /\s+DS$/i.test(val);
-
-        function matchesClass(itemSk) {
-            itemSk = itemSk.toLowerCase();
-            if (selectedMainClass === 'erwachsene') {
-                return itemSk === 'erwachsene' || itemSk === 'damen';
-            } else if (selectedMainClass.includes('jugend 19')) {
-                return itemSk.includes('jugend 19') || itemSk.includes('mädchen 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
-            } else if (selectedMainClass.includes('jugend 15')) {
-                return itemSk.includes('jugend 15') || itemSk.includes('mädchen 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
-            }
-            return itemSk.includes(selectedMainClass);
-        }
-
+        // Basis-Vereinsnamen ermitteln (ohne römische/arabische Mannschaftsnummern am Ende, z.B. "Elsflether TB II" -> "elsflether tb")
         function getBaseClub(clubStr) {
             if (!clubStr) return '';
             return clubStr.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X|\d+)$/i, '').trim().toLowerCase();
         }
 
-        const baseSelectedClub = getBaseClub(val);
-        let players = [];
-        let startIndex = -1;
-        let targetMaedchenMatch = null; 
+        const baseSelectedClub = getBaseClub(selectedVerein);
+        const isTeamDamen = /\s+DS$/i.test(selectedVerein) || selectedTagLower === 'damen';
 
+        // Start-Index der gewählten Mannschaft in der Excel-Tabelle finden
+        let startIndex = -1;
         for (let i = 0; i < fullRoster.length; i++) {
-            if (fullRoster[i].verein === val && matchesClass(fullRoster[i].spielklasse)) {
+            const rowTag = normalizeClassTag(fullRoster[i].spielklasse).toLowerCase();
+            if (fullRoster[i].verein === selectedVerein && rowTag === selectedTagLower) {
                 startIndex = i;
-                let skLow = fullRoster[i].spielklasse.toLowerCase();
-                if (skLow.includes('mädchen 19')) targetMaedchenMatch = 'mädchen 19';
-                else if (skLow.includes('mädchen 15')) targetMaedchenMatch = 'mädchen 15';
-                else if (skLow.includes('mädchen 13')) targetMaedchenMatch = 'mädchen 13';
-                else if (skLow.includes('mädchen')) targetMaedchenMatch = 'mädchen';
                 break;
             }
         }
 
         if (startIndex === -1) return [];
 
+        let players = [];
+
+        // Ab der gewählten Mannschaft abwärts alle spielberechtigten Spieler desselben Vereins in derselben Klasse einsammeln
         for (let i = startIndex; i < fullRoster.length; i++) {
-            let row = fullRoster[i];
-            let rowBaseClub = getBaseClub(row.verein);
+            const row = fullRoster[i];
+            const rowBaseClub = getBaseClub(row.verein);
+            const rowTagLower = normalizeClassTag(row.spielklasse).toLowerCase();
 
-            if (rowBaseClub === baseSelectedClub && matchesClass(row.spielklasse)) {
-                let rowSkLower = row.spielklasse.toLowerCase();
-                let skipPlayer = false;
-
-                if (isTeamDamen) {
-                    if (!rowSkLower.includes('damen')) skipPlayer = true;
-                } else if (targetMaedchenMatch) {
-                    if (!rowSkLower.includes(targetMaedchenMatch)) {
-                        skipPlayer = true;
-                    }
-                } else {
-                    if (rowSkLower.includes('damen') || rowSkLower.includes('mädchen')) {
-                        skipPlayer = true;
-                    }
-                }
-
-                if (!skipPlayer && !players.includes(row.spieler)) {
-                    players.push(row.spieler);
-                }
-            } else {
+            // Sobald ein anderer Verein beginnt, stoppen
+            if (rowBaseClub !== baseSelectedClub) {
                 break;
+            }
+
+            let isEligible = false;
+
+            if (isTeamDamen) {
+                isEligible = (rowTagLower === 'damen');
+            } else if (selectedTagLower === 'erwachsene') {
+                isEligible = (rowTagLower === 'erwachsene');
+            } else if (selectedTagLower.startsWith('mädchen')) {
+                // Bei Mädchen 19, 15 oder 13 dürfen nur Spieler mit exakt demselben Mädchen-Vermerk ausgewählt werden
+                isEligible = (rowTagLower === selectedTagLower);
+            } else if (selectedTagLower === 'jugend 19') {
+                // Bei Jugend 19 dürfen alle spielberechtigten Spieler der Jugend 19 (inkl. untere J19-Mannschaften) spielen
+                isEligible = (rowTagLower === 'jugend 19');
+            } else if (selectedTagLower === 'jugend 15') {
+                // Bei Jugend 15 dürfen alle spielberechtigten Spieler der Jugend 15 (inkl. untere J15-Mannschaften) spielen
+                isEligible = (rowTagLower === 'jugend 15');
+            } else if (selectedTagLower === 'jugend 13') {
+                isEligible = (rowTagLower === 'jugend 13');
+            }
+
+            if (isEligible && !players.includes(row.spieler)) {
+                players.push(row.spieler);
             }
         }
 
@@ -1915,7 +1932,7 @@
                     sel.add(new Option(p, p));
                 }
             });
-            sel.value = cur;
+            sel.value = heimPlayers.includes(cur) ? cur : '';
         });
 
         const gastIds = ['spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2'];
@@ -1931,7 +1948,7 @@
                     sel.add(new Option(p, p));
                 }
             });
-            sel.value = cur;
+            sel.value = gastPlayers.includes(cur) ? cur : '';
         });
     }
 
@@ -1977,8 +1994,8 @@
 
         document.getElementById('spielklasse').addEventListener('change', () => { updateAllDropdowns(); renderMatchTable(); });
         
-        document.getElementById('heimName').addEventListener('change', () => { updatePlayerDropdowns(); renderMatchTable(); });
-        document.getElementById('gastName').addEventListener('change', () => { updatePlayerDropdowns(); renderMatchTable(); });
+        document.getElementById('heimName').addEventListener('change', () => { updateClubDropdowns(); updatePlayerDropdowns(); renderMatchTable(); });
+        document.getElementById('gastName').addEventListener('change', () => { updateClubDropdowns(); updatePlayerDropdowns(); renderMatchTable(); });
 
         [
             'spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2', 'doppelLetterA1', 'doppelLetterA2',
