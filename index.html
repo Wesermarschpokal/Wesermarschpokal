@@ -1791,43 +1791,59 @@
         gastSelect.value = gVal;
     }
 
-    // Exakte Logik: Alle Spieler des gewählten Vereins ab der ersten passenden Zeile, 
-    // solange sie in der Excel-Liste direkt untereinander stehen und dieselbe Spielklasse aufweisen.
+    // --- NEUE VOLLSTÄNDIG ERNEUERTE SPIELERAUSWAHL-FUNKTION ---
     function getPlayersForTeam(teamSelectId) {
         const val = document.getElementById(teamSelectId).value;
         if (!val) return [];
         const fullRoster = getFullRoster();
         const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
 
-        let players = [];
-        let collecting = false;
-
-        for (let i = 0; i < fullRoster.length; i++) {
-            let row = fullRoster[i];
-            let itemSk = row.spielklasse.toLowerCase();
-
-            // Prüfen, ob die Zeile zur ausgewählten Hauptspielklasse gehört
-            let matchesClass = false;
+        // Prüfen, ob die Spielklasse übereinstimmt (inkl. erlaubter Unterklassen)
+        function matchesClass(itemSk) {
+            itemSk = itemSk.toLowerCase();
             if (selectedMainClass === 'erwachsene') {
-                matchesClass = (itemSk === 'erwachsene' || itemSk === 'damen');
+                return itemSk === 'erwachsene' || itemSk === 'damen';
             } else if (selectedMainClass.includes('jugend 19')) {
-                matchesClass = (itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15'));
+                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
             } else if (selectedMainClass.includes('jugend 15')) {
-                matchesClass = (itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13'));
-            } else {
-                matchesClass = itemSk.includes(selectedMainClass);
+                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
             }
+            return itemSk.includes(selectedMainClass);
+        }
 
-            if (row.verein === val && matchesClass) {
-                collecting = true;
+        // Hilfsfunktion: Bereinigt den Vereinsnamen von angehängten Zahlen oder römischen Ziffern (z.B. "TTC Elsfleth I" -> "ttc elsfleth")
+        function getBaseClub(clubStr) {
+            if (!clubStr) return '';
+            return clubStr.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X|\d+)$/i, '').trim().toLowerCase();
+        }
+
+        const baseSelectedClub = getBaseClub(val);
+        let players = [];
+        let startIndex = -1;
+
+        // 1. Finde den ersten Index in der Excel-Liste, der exakt den gleichen Vermerk in Spalte A hat wie die ausgewählte Mannschaft
+        for (let i = 0; i < fullRoster.length; i++) {
+            if (fullRoster[i].verein === val && matchesClass(fullRoster[i].spielklasse)) {
+                startIndex = i;
+                break;
+            }
+        }
+
+        if (startIndex === -1) return [];
+
+        // 2. Gehe ab diesem Startindex nach unten und sammle alle Spieler ein,
+        //    deren Basis-Verein übereinstimmt und die zur gleichen Spielklasse gehören.
+        for (let i = startIndex; i < fullRoster.length; i++) {
+            let row = fullRoster[i];
+            let rowBaseClub = getBaseClub(row.verein);
+
+            if (rowBaseClub === baseSelectedClub && matchesClass(row.spielklasse)) {
                 if (!players.includes(row.spieler)) {
                     players.push(row.spieler);
                 }
-            } else if (collecting) {
-                // Sobald ein anderer Verein oder eine andere Spielklasse in der Liste folgt, stoppen wir das Einsammeln
-                if (row.verein !== val || !matchesClass) {
-                    break;
-                }
+            } else {
+                // Sobald ein anderer Verein oder eine andere Spielklasse in der Liste folgt, stoppen
+                break;
             }
         }
 
