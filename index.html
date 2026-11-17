@@ -1183,24 +1183,30 @@
         }
     }
 
+    // Hilfsfunktion: Gibt den reinen Spielernamen zurück (ignoriert den angehängten Klammerzusatz für Vergleiche)
+    function cleanPlayerName(fullName) {
+        if (!fullName) return '';
+        return fullName.replace(/\s*\([^)]*\)$/, '').trim();
+    }
+
     function getPlayerName(team, letter, isDouble = false) {
         if (isDouble) {
             if (team === 'A') {
                 const sub1 = document.getElementById('spielerA_D1').value.trim();
                 const let1 = document.getElementById('doppelLetterA1').value;
-                if (sub1 && letter === let1) return sub1;
+                if (sub1 && letter === let1) return cleanPlayerName(sub1);
 
                 const sub2 = document.getElementById('spielerA_D2').value.trim();
                 const let2 = document.getElementById('doppelLetterA2').value;
-                if (sub2 && letter === let2) return sub2;
+                if (sub2 && letter === let2) return cleanPlayerName(sub2);
             } else if (team === 'B') {
                 const sub1 = document.getElementById('spielerB_D1').value.trim();
                 const let1 = document.getElementById('doppelLetterB1').value;
-                if (sub1 && letter === let1) return sub1;
+                if (sub1 && letter === let1) return cleanPlayerName(sub1);
 
                 const sub2 = document.getElementById('spielerB_D2').value.trim();
                 const let2 = document.getElementById('doppelLetterB2').value;
-                if (sub2 && letter === let2) return sub2;
+                if (sub2 && letter === let2) return cleanPlayerName(sub2);
             }
         }
 
@@ -1212,7 +1218,7 @@
         if (inputId) {
             const selectEl = document.getElementById(inputId);
             if (selectEl && selectEl.value.trim() !== '') {
-                return selectEl.value.trim();
+                return cleanPlayerName(selectEl.value.trim());
             }
         }
 
@@ -1231,7 +1237,7 @@
         if (!rosterJson) return 0;
         try {
             const roster = JSON.parse(rosterJson);
-            const found = roster.find(item => item.spieler.toLowerCase() === playerName.toLowerCase());
+            const found = roster.find(item => cleanPlayerName(item.spieler).toLowerCase() === playerName.toLowerCase());
             if (found) return found.qttr || 0;
         } catch (e) {}
         return 0;
@@ -1274,8 +1280,8 @@
 
     function getFilteredOptions(choices, selectedVal, excludedVal) {
         return choices.map(c => {
-            if (c.val === excludedVal && c.val !== selectedVal) return '';
-            let sel = (c.val === selectedVal) ? ' selected' : '';
+            if (cleanPlayerName(c.val) === cleanPlayerName(excludedVal) && cleanPlayerName(c.val) !== cleanPlayerName(selectedVal)) return '';
+            let sel = (cleanPlayerName(c.val) === cleanPlayerName(selectedVal)) ? ' selected' : '';
             return `<option value="${c.val}"${sel}>${c.name}</option>`;
         }).join('');
     }
@@ -1384,28 +1390,28 @@
                     }
                 } else if (m.type === 'frei') {
                     let heimChoices = [
-                        { val: 'A', name: pADouble.A },
-                        { val: 'B', name: pADouble.B },
-                        { val: 'C', name: pADouble.C }
+                        { val: pADouble.A, name: pADouble.A },
+                        { val: pADouble.B, name: pADouble.B },
+                        { val: pADouble.C, name: pADouble.C }
                     ];
                     let gastChoices = [
-                        { val: 'X', name: pBDouble.X },
-                        { val: 'Y', name: pBDouble.Y },
-                        { val: 'Z', name: pBDouble.Z }
+                        { val: pBDouble.X, name: pBDouble.X },
+                        { val: pBDouble.Y, name: pBDouble.Y },
+                        { val: pBDouble.Z, name: pBDouble.Z }
                     ];
 
-                    let curA1 = savedFreeA1 || 'A';
-                    let curA2 = savedFreeA2 || 'B';
-                    let curB1 = savedFreeB1 || 'X';
-                    let curB2 = savedFreeB2 || 'Y';
+                    let curA1 = savedFreeA1 || pADouble.A;
+                    let curA2 = savedFreeA2 || pADouble.B;
+                    let curB1 = savedFreeB1 || pBDouble.X;
+                    let curB2 = savedFreeB2 || pBDouble.Y;
 
                     nameA = `<select id="m_12_d_a1" class="table-select">${getFilteredOptions(heimChoices, curA1, curA2)}</select> / <select id="m_12_d_a2" class="table-select">${getFilteredOptions(heimChoices, curA2, curA1)}</select>`;
                     nameB = `<select id="m_12_d_b1" class="table-select">${getFilteredOptions(gastChoices, curB1, curB2)}</select> / <select id="m_12_d_b2" class="table-select">${getFilteredOptions(gastChoices, curB2, curB1)}</select>`;
 
-                    let qA1 = getPlayerQttr('A', curA1, true);
-                    let qA2 = getPlayerQttr('A', curA2, true);
-                    let qB1 = getPlayerQttr('B', curB1, true);
-                    let qB2 = getPlayerQttr('B', curB2, true);
+                    let qA1 = getPlayerQttr('A', 'A', true);
+                    let qA2 = getPlayerQttr('A', 'B', true);
+                    let qB1 = getPlayerQttr('B', 'X', true);
+                    let qB2 = getPlayerQttr('B', 'Y', true);
                     let qA = Math.round((qA1 + qA2) / 2);
                     let qB = Math.round((qB1 + qB2) / 2);
                     if (qA > 0) qttrDisplayA = ` <span class="qttr-span">(${qA})</span>`;
@@ -1428,20 +1434,20 @@
                     nameB = `${pBDouble[m.keysB[0]]} / ${pBDouble[m.keysB[1]]}`;
                 } else if (m.type === 'frei') {
                     let heimChoices = [
-                        { val: 'A', name: pADouble.A },
-                        { val: 'B', name: pADouble.B },
-                        { val: 'C', name: pADouble.C }
+                        { val: pADouble.A, name: pADouble.A },
+                        { val: pADouble.B, name: pADouble.B },
+                        { val: pADouble.C, name: pADouble.C }
                     ];
                     let gastChoices = [
-                        { val: 'X', name: pBDouble.X },
-                        { val: 'Y', name: pBDouble.Y },
-                        { val: 'Z', name: pBDouble.Z }
+                        { val: pBDouble.X, name: pBDouble.X },
+                        { val: pBDouble.Y, name: pBDouble.Y },
+                        { val: pBDouble.Z, name: pBDouble.Z }
                     ];
 
-                    let curA1 = savedFreeA1 || 'A';
-                    let curA2 = savedFreeA2 || 'B';
-                    let curB1 = savedFreeB1 || 'X';
-                    let curB2 = savedFreeB2 || 'Y';
+                    let curA1 = savedFreeA1 || pADouble.A;
+                    let curA2 = savedFreeA2 || pADouble.B;
+                    let curB1 = savedFreeB1 || pBDouble.X;
+                    let curB2 = savedFreeB2 || pBDouble.Y;
 
                     nameA = `<select id="m_12_d_a1" class="table-select">${getFilteredOptions(heimChoices, curA1, curA2)}</select> / <select id="m_12_d_a2" class="table-select">${getFilteredOptions(heimChoices, curA2, curA1)}</select>`;
                     nameB = `<select id="m_12_d_b1" class="table-select">${getFilteredOptions(gastChoices, curB1, curB2)}</select> / <select id="m_12_d_b2" class="table-select">${getFilteredOptions(gastChoices, curB2, curB1)}</select>`;
@@ -1704,7 +1710,12 @@
             for (let i = (String(json[0][0]).toLowerCase().includes('verein') ? 1 : 0); i < json.length; i++) {
                 const r = json[i];
                 if (r && r.length >= 4) {
-                    roster.push({ verein: String(r[0]).trim(), spielklasse: String(r[1]).trim(), spieler: `${String(r[2]).trim()}, ${String(r[3]).trim()}`, qttr: parseFloat(r[4]) || 0 });
+                    roster.push({ 
+                        verein: String(r[0]).trim(), 
+                        spielklasse: String(r[1]).trim(), 
+                        spieler: `${String(r[2]).trim()}, ${String(r[3]).trim()}`, 
+                        qttr: parseFloat(r[4]) || 0 
+                    });
                 }
             }
             localStorage.setItem('wesermarsch_pokal_roster', JSON.stringify(roster));
@@ -1713,13 +1724,20 @@
         }).catch(() => {});
     }
 
-    function getFilteredRoster() {
+    // Liefert alle Spieler, die für die ausgewählte Haupt-Spielklasse infrage kommen (inkl. erlaubter Unterklassen)
+    function getRosterForSelectedClass() {
         try {
             const roster = JSON.parse(localStorage.getItem('wesermarsch_pokal_roster') || '[]');
             const sk = document.getElementById('spielklasse').value.trim().toLowerCase();
             return roster.filter(i => {
                 let itemSk = i.spielklasse.toLowerCase();
-                if (sk === 'erwachsene') return itemSk === 'erwachsene' || itemSk === 'damen';
+                if (sk === 'erwachsene') {
+                    return itemSk === 'erwachsene' || itemSk === 'damen';
+                } else if (sk.includes('jugend 19')) {
+                    return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
+                } else if (sk.includes('jugend 15')) {
+                    return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
+                }
                 return itemSk.includes(sk);
             });
         } catch(e) { return []; }
@@ -1733,7 +1751,7 @@
         heimSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
         gastSelect.innerHTML = '<option value="">Bitte Verein wählen</option>';
 
-        const clubs = [...new Set(getFilteredRoster().map(i => i.verein))].sort();
+        const clubs = [...new Set(getRosterForSelectedClass().map(i => i.verein))].sort();
         clubs.forEach(c => {
             if (c !== gVal) heimSelect.add(new Option(c, c));
             if (c !== hVal) gastSelect.add(new Option(c, c));
@@ -1741,47 +1759,68 @@
         heimSelect.value = hVal; gastSelect.value = gVal;
     }
 
-    // Geändert: Liefert alle Spieler des Vereins in der aktuellen Spielklasse (inkl. nachfolgender Mannschaften)
+    // Liefert alle Spieler des Vereins für die gewählte Spielklasse UND nachfolgende Mannschaften (inkl. Klassenbezeichnung in Klammern)
     function getPlayersForTeam(teamSelectId) {
         const val = document.getElementById(teamSelectId).value;
         if (!val) return [];
-        return getFilteredRoster().filter(i => i.verein === val).map(i => i.spieler);
+        const filtered = getRosterForSelectedClass().filter(i => i.verein === val);
+        return filtered.map(i => {
+            return {
+                fullName: `${i.spieler} (${i.spielklasse})`,
+                cleanName: i.spieler
+            };
+        });
     }
 
     function updatePlayerDropdowns() {
-        const heimPlayers = [...new Set(getPlayersForTeam('heimName'))];
-        const gastPlayers = [...new Set(getPlayersForTeam('gastName'))];
+        const heimPlayers = getPlayersForTeam('heimName');
+        const gastPlayers = getPlayersForTeam('gastName');
 
         const heimIds = ['spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2'];
-        const selectedHeim = heimIds.map(id => document.getElementById(id)?.value || '').filter(v => v !== '');
+        const selectedHeim = heimIds.map(id => cleanPlayerName(document.getElementById(id)?.value || '')).filter(v => v !== '');
 
         heimIds.forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
-            const cur = sel.value;
+            const cur = cleanPlayerName(sel.value);
             sel.innerHTML = `<option value="">${id.includes('_D') ? 'Keiner (optional)' : 'Bitte wählen'}</option>`;
             heimPlayers.forEach(p => {
-                if (!selectedHeim.includes(p) || p === cur) {
-                    sel.add(new Option(p, p));
+                if (!selectedHeim.includes(cleanPlayerName(p.cleanName)) || cleanPlayerName(p.cleanName) === cur) {
+                    sel.add(new Option(p.fullName, p.cleanName));
                 }
             });
-            sel.value = cur;
+            // Wert wiederherstellen falls vorhanden
+            if (cur) {
+                for (let opt of sel.options) {
+                    if (cleanPlayerName(opt.value) === cur || cleanPlayerName(opt.text) === cur) {
+                        sel.value = opt.value;
+                        break;
+                    }
+                }
+            }
         });
 
         const gastIds = ['spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2'];
-        const selectedGast = gastIds.map(id => document.getElementById(id)?.value || '').filter(v => v !== '');
+        const selectedGast = gastIds.map(id => cleanPlayerName(document.getElementById(id)?.value || '')).filter(v => v !== '');
 
         gastIds.forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
-            const cur = sel.value;
+            const cur = cleanPlayerName(sel.value);
             sel.innerHTML = `<option value="">${id.includes('_D') ? 'Keiner (optional)' : 'Bitte wählen'}</option>`;
             gastPlayers.forEach(p => {
-                if (!selectedGast.includes(p) || p === cur) {
-                    sel.add(new Option(p, p));
+                if (!selectedGast.includes(cleanPlayerName(p.cleanName)) || cleanPlayerName(p.cleanName) === cur) {
+                    sel.add(new Option(p.fullName, p.cleanName));
                 }
             });
-            sel.value = cur;
+            if (cur) {
+                for (let opt of sel.options) {
+                    if (cleanPlayerName(opt.value) === cur || cleanPlayerName(opt.text) === cur) {
+                        sel.value = opt.value;
+                        break;
+                    }
+                }
+            }
         });
     }
 
@@ -1827,8 +1866,12 @@
         });
 
         document.getElementById('spielklasse').addEventListener('change', () => { updateAllDropdowns(); renderMatchTable(); });
+        
+        // Wenn Heimmannschaft / Gastmannschaft gewechselt wird, Spielerdropdowns aktualisieren
+        document.getElementById('heimName').addEventListener('change', () => { updatePlayerDropdowns(); renderMatchTable(); });
+        document.getElementById('gastName').addEventListener('change', () => { updatePlayerDropdowns(); renderMatchTable(); });
+
         [
-            'heimName', 'gastName',
             'spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2', 'doppelLetterA1', 'doppelLetterA2',
             'spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2', 'doppelLetterB1', 'doppelLetterB2'
         ].forEach(id => {
