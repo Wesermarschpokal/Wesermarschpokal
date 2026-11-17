@@ -722,8 +722,8 @@
                 </div>
             </div>
 
-            <div class="card" id="manualVorgabeCard" style="display: none;">
-                <h3>Manuelle Vorgabe</h3>
+            <div class="card" id="manualVorgabeCard">
+                <h3>Vorgabe</h3>
                 <div class="grid-2" style="margin-top: 8px;">
                     <div class="form-group">
                         <label>Vorgabebeginn / Begünstigter</label>
@@ -1073,6 +1073,14 @@
     }
     function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('active'); }
 
+    function loadSettings() {
+        qttrVorgabeActive = localStorage.getItem('wesermarsch_qttr_vorgabe') === 'true';
+        stepErwachsene = parseInt(localStorage.getItem('wesermarsch_step_erwachsene'), 10) || 35;
+        stepJugend19 = parseInt(localStorage.getItem('wesermarsch_step_jugend19'), 10) || 35;
+        stepJugend15 = parseInt(localStorage.getItem('wesermarsch_step_jugend15'), 10) || 35;
+        maxVorgabe = parseInt(localStorage.getItem('wesermarsch_max_vorgabe'), 10) || 6;
+    }
+
     // --- ZENTRALES SPIEL-ARCHIV FÜR "ÜBERSICHT SPIELE" ---
     function saveFinishedGameToArchive() {
         try {
@@ -1175,7 +1183,6 @@
         }
     }
 
-    // isDouble = true prüft die beiden Zusatzspieler für Doppel; isDouble = false nutzt die regulären Einzelspieler
     function getPlayerName(team, letter, isDouble = false) {
         if (isDouble) {
             if (team === 'A') {
@@ -1314,7 +1321,6 @@
 
         container.innerHTML = '';
 
-        // Einzel-Spieler (immer reguläre Aufstellung)
         const pASingle = {
             A: getPlayerName('A', 'A', false),
             B: getPlayerName('A', 'B', false),
@@ -1326,7 +1332,6 @@
             Z: getPlayerName('B', 'Z', false)
         };
 
-        // Doppel-Spieler (inkl. Austausch durch "Nur Doppel für:")
         const pADouble = {
             A: getPlayerName('A', 'A', true),
             B: getPlayerName('A', 'B', true),
@@ -1655,7 +1660,10 @@
     function exportToPDF() {
         document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'block');
         document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = 'none');
-        document.getElementById('manualVorgabeCard').style.display = 'none';
+        
+        if (qttrVorgabeActive || document.getElementById('fixedVorgabeTeam').value === 'Keine') {
+            document.getElementById('manualVorgabeCard').style.display = 'none';
+        }
 
         ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
             const field = document.getElementById(id);
@@ -1779,7 +1787,11 @@
     function updateAllDropdowns() { updateClubDropdowns(); updatePlayerDropdowns(); }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Burger-Menü Steuerung wiederhergestellt
+        loadSettings();
+        applyQttrUIVisibility();
+        updatePdfFooterHint();
+
+        // Burger-Menü Steuerung
         const burgerBtn = document.getElementById('burgerBtn');
         const drawerMenu = document.getElementById('drawerMenu');
         if (burgerBtn && drawerMenu) {
@@ -1804,6 +1816,16 @@
         updateAllDropdowns();
         renderMatchTable();
 
+        // Event-Listener für manuelle Vorgabe
+        document.getElementById('fixedVorgabeTeam').addEventListener('change', () => {
+            checkAdminLockOnInput();
+            renderMatchTable();
+        });
+        document.getElementById('fixedVorgabeValue').addEventListener('input', () => {
+            checkAdminLockOnInput();
+            renderMatchTable();
+        });
+
         document.getElementById('spielklasse').addEventListener('change', () => { updateAllDropdowns(); renderMatchTable(); });
         [
             'heimName', 'gastName',
@@ -1814,7 +1836,7 @@
             if (el) {
                 el.addEventListener('change', (e) => {
                     syncDoubleLetters(e.target.id);
-                    updatePlayerDropdowns();
+                    updateAllDropdowns();
                     renderMatchTable();
                 });
             }
