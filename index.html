@@ -1724,7 +1724,6 @@
         } catch(e) { return []; }
     }
 
-    // Liefert alle für die Haupt-Spielklasse relevanten Zeilen aus der Excel-Liste (inkl. erlaubter Unterklassen)
     function getRosterForSelectedClass() {
         const roster = getFullRoster();
         const sk = document.getElementById('spielklasse').value.trim().toLowerCase();
@@ -1741,7 +1740,6 @@
         });
     }
 
-    // Baut die Vereinsliste auf, wobei bei Jugend-Klassen die spezifische Unterklasse in Klammern am Namen steht
     function updateClubDropdowns() {
         const heimSelect = document.getElementById('heimName');
         const gastSelect = document.getElementById('gastName');
@@ -1793,14 +1791,13 @@
         gastSelect.value = gVal;
     }
 
-    // Liefert alle Spieler, die zur gewählten Mannschaft ODER in der Excel-Liste direkt darunter (gleicher Verein & Spielklasse) stehen
+    // Liefert alle Spieler des Vereins und nachfolgende Mannschaften in der Excel-Liste für die Spielklasse
     function getPlayersForTeam(teamSelectId) {
         const val = document.getElementById(teamSelectId).value;
         if (!val) return [];
         const fullRoster = getFullRoster();
         const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
 
-        // 1. Finde alle Zeilen des Vereins in der gewählten Spielklasse oder erlaubten Unterklassen
         let relevantRows = fullRoster.filter(i => {
             if (i.verein !== val) return false;
             let itemSk = i.spielklasse.toLowerCase();
@@ -1814,7 +1811,6 @@
             return itemSk.includes(selectedMainClass);
         });
 
-        // Wir geben einfach die Spielernamen ohne Klammerzusatz zurück
         return relevantRows.map(i => i.spieler);
     }
 
