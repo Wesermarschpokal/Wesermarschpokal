@@ -1757,9 +1757,9 @@
             if (sk === 'erwachsene') {
                 return itemSk === 'erwachsene' || itemSk === 'damen';
             } else if (sk.includes('jugend 19')) {
-                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
+                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 19') || itemSk.includes('mädchen 15') || itemSk.includes('mädchen 13');
             } else if (sk.includes('jugend 15')) {
-                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
+                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 15') || itemSk.includes('mädchen 13');
             }
             return itemSk.includes(sk);
         });
@@ -1788,24 +1788,36 @@
 
         sortedClubs.forEach(clubName => {
             const classes = clubMap.get(clubName);
-            let displayName = clubName;
+            let baseName = clubName;
+            
+            // Wenn der Vereinsname / Mannschaftsname mit Leerzeichen DS endet -> (Damen) anzeigen
+            if (/\s+DS$/i.test(baseName)) {
+                baseName = baseName.replace(/\s+DS$/i, '').trim() + ' (Damen)';
+            }
 
-            if (selectedMainClass.includes('jugend 19')) {
-                let subClasses = [...classes].filter(c => {
-                    let cl = c.toLowerCase();
-                    return cl.includes('jugend 15') || cl.includes('mädchen 15');
-                });
-                if (subClasses.length > 0) {
-                    displayName += ` (${subClasses.join(', ')})`;
+            let extraSubClasses = [];
+            classes.forEach(c => {
+                let cl = c.toLowerCase();
+                if (selectedMainClass.includes('jugend 19')) {
+                    if (cl.includes('mädchen 19') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 19'))) extraSubClasses.push('Mädchen 19');
+                    else if (cl.includes('mädchen 15') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 15'))) extraSubClasses.push('Mädchen 15');
+                    else if (cl.includes('mädchen 13') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 13'))) extraSubClasses.push('Mädchen 13');
+                    else if (cl.includes('jugend 15') && !extraSubClasses.some(x => x.toLowerCase().includes('jugend 15'))) extraSubClasses.push('Jugend 15');
+                } else if (selectedMainClass.includes('jugend 15')) {
+                    if (cl.includes('mädchen 15') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 15'))) extraSubClasses.push('Mädchen 15');
+                    else if (cl.includes('mädchen 13') && !extraSubClasses.some(x => x.toLowerCase().includes('mädchen 13'))) extraSubClasses.push('Mädchen 13');
+                    else if (cl.includes('jugend 13') && !extraSubClasses.some(x => x.toLowerCase().includes('jugend 13'))) extraSubClasses.push('Jugend 13');
+                } else {
+                    if (cl.includes('damen') && !baseName.toLowerCase().includes('damen')) {
+                        if (!extraSubClasses.includes('Damen')) extraSubClasses.push('Damen');
+                    }
                 }
-            } else if (selectedMainClass.includes('jugend 15')) {
-                let subClasses = [...classes].filter(c => {
-                    let cl = c.toLowerCase();
-                    return cl.includes('jugend 13') || cl.includes('mädchen 13');
-                });
-                if (subClasses.length > 0) {
-                    displayName += ` (${subClasses.join(', ')})`;
-                }
+            });
+
+            let displayName = baseName;
+            // Wenn bereits (Damen) im Namen steht, keine zusätzlichen Duplikate erzeugen
+            if (extraSubClasses.length > 0 && !displayName.toLowerCase().includes('damen')) {
+                displayName += ` (${extraSubClasses.join(', ')})`;
             }
 
             if (clubName !== gVal) heimSelect.add(new Option(displayName, clubName));
@@ -1822,14 +1834,18 @@
         const fullRoster = getFullRoster();
         const selectedMainClass = document.getElementById('spielklasse').value.trim().toLowerCase();
 
+        // Prüfen, ob die Mannschaft Damen oder Mädchen ist (entweder über Endung " DS" im Namen oder Spielklasse)
+        const isTeamDamen = /\s+DS$/i.test(val);
+        let isTeamMaedchen = false;
+
         function matchesClass(itemSk) {
             itemSk = itemSk.toLowerCase();
             if (selectedMainClass === 'erwachsene') {
                 return itemSk === 'erwachsene' || itemSk === 'damen';
             } else if (selectedMainClass.includes('jugend 19')) {
-                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 15');
+                return itemSk.includes('jugend 19') || itemSk.includes('jugend 15') || itemSk.includes('mädchen 19') || itemSk.includes('mädchen 15') || itemSk.includes('mädchen 13');
             } else if (selectedMainClass.includes('jugend 15')) {
-                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 13');
+                return itemSk.includes('jugend 15') || itemSk.includes('jugend 13') || itemSk.includes('mädchen 15') || itemSk.includes('mädchen 13');
             }
             return itemSk.includes(selectedMainClass);
         }
@@ -1857,7 +1873,20 @@
             let rowBaseClub = getBaseClub(row.verein);
 
             if (rowBaseClub === baseSelectedClub && matchesClass(row.spielklasse)) {
-                if (!players.includes(row.spieler)) {
+                let rowSkLower = row.spielklasse.toLowerCase();
+                if (rowSkLower.includes('mädchen')) {
+                    isTeamMaedchen = true;
+                }
+
+                // Filterbedingung: Wenn Mannschaft Damen/Mädchen ist, dürfen nur entsprechende Spieler angezeigt werden
+                let skipPlayer = false;
+                if (isTeamDamen || isTeamMaedchen || rowSkLower.includes('damen') || rowSkLower.includes('mädchen')) {
+                    if (!rowSkLower.includes('damen') && !rowSkLower.includes('mädchen')) {
+                        skipPlayer = true;
+                    }
+                }
+
+                if (!skipPlayer && !players.includes(row.spieler)) {
                     players.push(row.spieler);
                 }
             } else {
