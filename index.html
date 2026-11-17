@@ -456,11 +456,11 @@
             display: none;
         }
 
-        /* PDF EXPORT OPTIMIERUNGEN */
+        /* PDF EXPORT OPTIMIERUNGEN (2 cm = 20 mm Rand rundherum -> 170 mm Inhaltsbreite) */
         .pdf-export-mode {
-            width: 210mm !important;
+            width: 170mm !important;
             box-sizing: border-box !important;
-            padding: 3mm 5mm !important;
+            padding: 0 !important;
             margin: 0 !important;
             background: #fff !important;
             border-radius: 0 !important;
@@ -472,44 +472,44 @@
 
         .pdf-export-mode .header-print {
             border-bottom: 1.2px solid var(--primary) !important;
-            padding-bottom: 1mm !important;
-            margin-bottom: 1.5mm !important;
+            padding-bottom: 0.8mm !important;
+            margin-bottom: 1mm !important;
         }
 
-        .pdf-export-mode .header-title h1 { font-size: 9pt !important; }
-        .pdf-export-mode .header-title p { font-size: 5.5pt !important; margin-bottom: 0 !important; }
+        .pdf-export-mode .header-title h1 { font-size: 8.5pt !important; }
+        .pdf-export-mode .header-title p { font-size: 5pt !important; margin-bottom: 0 !important; }
 
         .pdf-export-mode .card {
             border: 1px solid #cbd5e1 !important;
             background: #fff !important;
-            padding: 2px 4px !important;
-            margin-bottom: 1.2mm !important;
+            padding: 1.5px 3.5px !important;
+            margin-bottom: 0.9mm !important;
             border-radius: 2px !important;
         }
 
-        .pdf-export-mode .card h3 { font-size: 7.5pt !important; margin-bottom: 1px !important; }
+        .pdf-export-mode .card h3 { font-size: 6.8pt !important; margin-bottom: 1px !important; }
 
         .pdf-export-mode .grid-2 {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
-            gap: 3px !important;
+            gap: 2.5px !important;
         }
 
         .pdf-export-mode .grid-3 {
             display: grid !important;
             grid-template-columns: 1fr 1fr 1fr !important;
-            gap: 3px !important;
+            gap: 2.5px !important;
         }
 
         .pdf-export-mode .form-group {
-            margin-bottom: 0.8px !important;
+            margin-bottom: 0.5px !important;
             display: flex !important;
             align-items: center !important;
             justify-content: space-between !important;
         }
 
         .pdf-export-mode label {
-            font-size: 5.5pt !important;
+            font-size: 5pt !important;
             margin-bottom: 0 !important;
         }
 
@@ -517,33 +517,33 @@
             border: none !important;
             border-bottom: 1px solid #94a3b8 !important;
             background: transparent !important;
-            font-size: 6pt !important;
-            padding: 0.5px 2px !important;
+            font-size: 5.5pt !important;
+            padding: 0.3px 2px !important;
             height: auto !important;
             text-align: right !important;
             width: 55% !important;
         }
 
         .pdf-export-mode .match-card {
-            padding: 1.5px 3px !important;
-            margin-bottom: 0.8mm !important;
-            font-size: 5.5pt !important;
+            padding: 1px 2.5px !important;
+            margin-bottom: 0.6mm !important;
+            font-size: 5pt !important;
         }
 
         .pdf-export-mode .match-top-row {
-            margin-bottom: 0.5px !important;
+            margin-bottom: 0.3px !important;
         }
 
         .pdf-export-mode .match-num {
-            font-size: 6pt !important;
-            min-width: 14px !important;
+            font-size: 5.5pt !important;
+            min-width: 12px !important;
         }
 
         .pdf-export-mode .match-players-info {
-            font-size: 6pt !important;
+            font-size: 5.5pt !important;
             display: flex !important;
             align-items: center !important;
-            gap: 3px !important;
+            gap: 2px !important;
             flex-wrap: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
@@ -561,40 +561,40 @@
         }
 
         .pdf-export-mode .qttr-span {
-            font-size: 6pt !important;
+            font-size: 5.5pt !important;
             color: #64748b !important;
         }
 
         .pdf-export-mode .match-vorgabe-badge {
-            padding: 0.5px 3px !important;
-            font-size: 5pt !important;
+            padding: 0.3px 2.5px !important;
+            font-size: 4.5pt !important;
         }
 
         .pdf-export-mode .match-result-box .saetze-val {
-            font-size: 6.5pt !important;
-        }
-
-        .pdf-export-mode .match-result-box .punkte-val {
             font-size: 6pt !important;
         }
 
+        .pdf-export-mode .match-result-box .punkte-val {
+            font-size: 5.5pt !important;
+        }
+
         .pdf-export-mode .match-satze-row {
-            padding-top: 1px !important;
-            margin-top: 1px !important;
+            padding-top: 0.8px !important;
+            margin-top: 0.8px !important;
             display: grid !important;
             grid-template-columns: repeat(5, 1fr) !important;
             gap: 1.5px !important;
         }
 
         .pdf-export-mode .satz-input-group label {
-            font-size: 4.5pt !important;
-            margin-bottom: 0.2px !important;
+            font-size: 4pt !important;
+            margin-bottom: 0.1px !important;
             text-align: center !important;
         }
 
         .pdf-export-mode .satz-input-single {
-            font-size: 5.5pt !important;
-            padding: 0.2px !important;
+            font-size: 5pt !important;
+            padding: 0.1px !important;
             text-align: center !important;
             width: 100% !important;
             border: 1px solid #cbd5e1 !important;
@@ -602,9 +602,9 @@
         }
 
         .pdf-export-mode .summary-card {
-            padding: 2px 5px !important;
-            margin-top: 1.2mm !important;
-            font-size: 7pt !important;
+            padding: 1.5px 4px !important;
+            margin-top: 0.8mm !important;
+            font-size: 6.5pt !important;
             border-radius: 3px !important;
         }
 
@@ -615,26 +615,26 @@
             justify-content: center !important;
             margin: 0 auto !important;
             width: 80% !important;
-            max-width: 384px !important;
-            padding: 2px 4px !important;
+            max-width: 320px !important;
+            padding: 1.5px 3px !important;
         }
 
         .pdf-export-mode .sig-container label {
-            font-size: 5.5pt !important;
-            margin-bottom: 0.5px !important;
+            font-size: 5pt !important;
+            margin-bottom: 0.4px !important;
         }
 
         .pdf-export-mode canvas.sig-canvas {
             border: 1px solid #94a3b8 !important;
-            height: 48px !important;
+            height: 36px !important;
             width: 100% !important;
             background: #fff !important;
         }
 
         .pdf-export-mode .pdf-footer-hint {
-            font-size: 4.5pt !important;
-            margin-top: 0.5mm !important;
-            padding-top: 0.5mm !important;
+            font-size: 4pt !important;
+            margin-top: 0.4mm !important;
+            padding-top: 0.4mm !important;
             border-top: 1px solid #cbd5e1 !important;
         }
     </style>
@@ -908,7 +908,7 @@
     </div>
 </div>
 
-<!-- Modal: Einstellungen -->
+<!-- Modal: Einstellungen (Mit integriertem Admin-Archiv-Button) -->
 <div class="modal-overlay hide-on-pdf" id="settingsModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -936,7 +936,38 @@
                 <label for="maxVorgabeInput">Maximale Vorgabepunkte (QTTR)</label>
                 <input type="number" id="maxVorgabeInput" value="6" min="0" max="20" step="1">
             </div>
+
+            <!-- Button für Zentrale Spielberichte direkt in den Einstellungen (nur für eingeloggte Admins sichtbar) -->
+            <div id="settingsArchiveContainer" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 12px; display: none;">
+                <button type="button" class="btn" style="width: 100%; background-color: #0d9488;" onclick="openArchivesModal()">📂 Zentrale Spielberichte öffnen</button>
+            </div>
+
             <button type="button" class="btn" style="width: 100%; margin-top: 15px;" onclick="saveSettings()">Speichern & Übernehmen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Zentrale Spielberichte (Mit Saison-Auswahlfeld) -->
+<div class="modal-overlay hide-on-pdf" id="adminArchivesModal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Zentrale Spielberichte (Archiv)</h3>
+            <button type="button" class="close-modal" onclick="closeArchivesModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group" style="margin-bottom: 15px; background: #f1f5f9; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <label for="seasonSelectDropdown" style="color: var(--primary); margin-bottom: 5px;">Saison auswählen (01.06. – 31.05.):</label>
+                <select id="seasonSelectDropdown" onchange="renderArchivesList()" style="font-weight: 600; cursor: pointer;">
+                    <!-- Saisons werden dynamisch geladen -->
+                </select>
+            </div>
+            <div id="archivesListContainer" style="max-height: 320px; overflow-y: auto; margin-bottom: 15px;">
+                <!-- Spielberichte der ausgewählten Saison werden dynamisch gefüllt -->
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="exportArchivesJSON()">Export JSON</button>
+                <button type="button" class="btn" style="flex: 1; background-color: #ef4444;" onclick="clearArchives()">Archiv leeren</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1016,9 +1047,199 @@
         document.getElementById('stepJugend19').value = stepJugend19;
         document.getElementById('stepJugend15').value = stepJugend15;
         document.getElementById('maxVorgabeInput').value = maxVorgabe;
+        
+        const archiveContainer = document.getElementById('settingsArchiveContainer');
+        if (archiveContainer) {
+            archiveContainer.style.display = isAdminLoggedIn ? 'block' : 'none';
+        }
+
         document.getElementById('settingsModal').classList.add('active');
     }
     function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('active'); }
+
+    // --- SAISON-LOGIK & ARCHIV-STEUERUNG ---
+    function getSeasonFromDate(dateStr) {
+        let d = dateStr ? new Date(dateStr) : new Date();
+        if (isNaN(d.getTime())) d = new Date();
+        
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1;
+
+        if (month >= 6) {
+            return `${year}/${year + 1}`;
+        } else {
+            return `${year - 1}/${year}`;
+        }
+    }
+
+    function openArchivesModal() {
+        if (!isAdminLoggedIn) {
+            alert('Zugriff verweigert! Bitte zuerst als Admin einloggen.');
+            return;
+        }
+        closeSettingsModal();
+        populateSeasonDropdown();
+        renderArchivesList();
+        document.getElementById('adminArchivesModal').classList.add('active');
+    }
+
+    function closeArchivesModal() {
+        document.getElementById('adminArchivesModal').classList.remove('active');
+    }
+
+    function saveGameToCentralArchive() {
+        try {
+            const gameData = getGameData();
+            gameData.archivZeitpunkt = new Date().toLocaleString('de-DE');
+            gameData.saison = getSeasonFromDate(gameData.stammdaten.datum);
+            
+            const id = `bericht_${gameData.stammdaten.datum || 'datum'}_${gameData.stammdaten.heimName || 'heim'}_vs_${gameData.stammdaten.gastName || 'gast'}`.replace(/[^a-zA-Z0-9_]/g, '_');
+            gameData.archivId = id;
+
+            let archives = JSON.parse(localStorage.getItem('wesermarsch_zentrales_archiv') || '{}');
+            archives[id] = gameData;
+            localStorage.setItem('wesermarsch_zentrales_archiv', JSON.stringify(archives));
+
+            console.log(`Spielbericht erfolgreich im zentralen Archiv (Saison ${gameData.saison}) gespeichert.`);
+        } catch (e) {
+            console.error("Fehler beim Speichern im zentralen Archiv:", e);
+        }
+    }
+
+    function populateSeasonDropdown() {
+        const dropdown = document.getElementById('seasonSelectDropdown');
+        if (!dropdown) return;
+
+        let archives = JSON.parse(localStorage.getItem('wesermarsch_zentrales_archiv') || '{}');
+        const keys = Object.keys(archives);
+        const seasonCounts = {};
+
+        keys.forEach(key => {
+            const item = archives[key];
+            const s = item.saison || getSeasonFromDate(item.stammdaten ? item.stammdaten.datum : '');
+            seasonCounts[s] = (seasonCounts[s] || 0) + 1;
+        });
+
+        const sortedSeasons = Object.keys(seasonCounts).sort((a, b) => {
+            const yearA = parseInt(a.split('/')[0], 10);
+            const yearB = parseInt(b.split('/')[0], 10);
+            return yearB - yearA;
+        });
+
+        dropdown.innerHTML = '';
+
+        if (sortedSeasons.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'Keine Saisons vorhanden';
+            dropdown.appendChild(opt);
+            return;
+        }
+
+        sortedSeasons.forEach(season => {
+            const opt = document.createElement('option');
+            opt.value = season;
+            const count = seasonCounts[season];
+            opt.textContent = `Saison ${season} (${count} ${count === 1 ? 'Bericht' : 'Berichte'})`;
+            dropdown.appendChild(opt);
+        });
+    }
+
+    function renderArchivesList() {
+        const container = document.getElementById('archivesListContainer');
+        const dropdown = document.getElementById('seasonSelectDropdown');
+        if (!container || !dropdown) return;
+
+        const selectedSeason = dropdown.value;
+        let archives = JSON.parse(localStorage.getItem('wesermarsch_zentrales_archiv') || '{}');
+        const keys = Object.keys(archives);
+
+        if (keys.length === 0 || !selectedSeason) {
+            container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 20px;">Keine gespeicherten Spielberichte vorhanden.</p>';
+            return;
+        }
+
+        const filteredKeys = keys.filter(key => {
+            const item = archives[key];
+            const itemSeason = item.saison || getSeasonFromDate(item.stammdaten ? item.stammdaten.datum : '');
+            return itemSeason === selectedSeason;
+        }).sort((a, b) => {
+            const dateA = (archives[a].stammdaten && archives[a].stammdaten.datum) || '';
+            const dateB = (archives[b].stammdaten && archives[b].stammdaten.datum) || '';
+            return dateB.localeCompare(dateA);
+        });
+
+        if (filteredKeys.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 20px;">Keine Berichte in dieser Saison.</p>';
+            return;
+        }
+
+        let html = '';
+        filteredKeys.forEach(key => {
+            const item = archives[key];
+            const st = item.stammdaten || {};
+            const displayDate = st.datum ? st.datum.split('-').reverse().join('.') : 'Unbekannt';
+            html += `
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <div style="flex: 1;">
+                        <strong style="font-size: 0.9rem;">${st.heimName || 'Heim'} vs. ${st.gastName || 'Gast'}</strong><br>
+                        <small style="color: #64748b;">Datum: ${displayDate} | Klasse: ${st.spielklasse || 'k.A.'}</small>
+                    </div>
+                    <div style="display: flex; gap: 5px; flex-shrink: 0;">
+                        <button type="button" class="btn-system-info" onclick="restoreArchivedGame('${key}')">Wiederherstellen</button>
+                        <button type="button" class="btn-system-info" style="background-color: #ef4444;" onclick="deleteArchivedGame('${key}')">Löschen</button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function restoreArchivedGame(key) {
+        if (!confirm('Möchten Sie diesen Spielbericht in das Formular laden? Aktuelle Eingaben werden überschrieben.')) return;
+        let archives = JSON.parse(localStorage.getItem('wesermarsch_zentrales_archiv') || '{}');
+        if (archives[key]) {
+            populateFormData(archives[key]);
+            closeArchivesModal();
+            switchTab('tab1');
+            alert('Spielbericht erfolgreich wiederhergestellt!');
+        }
+    }
+
+    function deleteArchivedGame(key) {
+        if (!confirm('Diesen Bericht wirklich aus dem Archiv löschen?')) return;
+        let archives = JSON.parse(localStorage.getItem('wesermarsch_zentrales_archiv') || '{}');
+        delete archives[key];
+        localStorage.setItem('wesermarsch_zentrales_archiv', JSON.stringify(archives));
+        
+        const currentSeason = document.getElementById('seasonSelectDropdown').value;
+        populateSeasonDropdown();
+        
+        const dropdown = document.getElementById('seasonSelectDropdown');
+        if ([...dropdown.options].some(o => o.value === currentSeason)) {
+            dropdown.value = currentSeason;
+        }
+        
+        renderArchivesList();
+    }
+
+    function clearArchives() {
+        if (!confirm('Möchten Sie das gesamte Archiv unwiderruflich leeren?')) return;
+        localStorage.removeItem('wesermarsch_zentrales_archiv');
+        populateSeasonDropdown();
+        renderArchivesList();
+    }
+
+    function exportArchivesJSON() {
+        let archives = localStorage.getItem('wesermarsch_zentrales_archiv') || '{}';
+        let blob = new Blob([archives], { type: 'application/json' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = `spielberichte_archiv_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+    // ---------------------------------------------
 
     function updatePdfFooterHint() {
         const hintEl = document.getElementById('pdfFooterHint');
@@ -1703,6 +1924,10 @@
             isFormCompleted = false;
         } else {
             isFormCompleted = true;
+            
+            // Zentrales Speichern im Archiv beim Abschließen
+            saveGameToCentralArchive();
+
             document.getElementById('btnAbschliessen').style.display = 'none';
             document.getElementById('btnPdfPrint').style.display = 'inline-block';
         }
@@ -1729,7 +1954,7 @@
         resizeCanvas(document.getElementById('sigCanvasB'));
 
         const opt = {
-            margin:       0,
+            margin:       20, // 20 mm = 2 cm rund umzu verkleinert
             filename:     `Spielbericht_${document.getElementById('datum').value || 'Wesermarschpokal'}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false },
@@ -1781,7 +2006,7 @@
         const canvasB = document.getElementById('sigCanvasB');
 
         return {
-            version: "1.35",
+            version: "1.37",
             stammdaten: {
                 spielklasse: document.getElementById('spielklasse').value || 'Erwachsene',
                 datum: document.getElementById('datum').value || '',
@@ -1924,7 +2149,6 @@
         }
     }
 
-    // AUTOMATISCHER EXCEL-IMPORT IM HINTERGRUND BEI SEITENAUFRUF
     function loadExcelFromGitHub() {
         fetch('spielerliste.xlsx')
             .then(response => {
@@ -1977,7 +2201,6 @@
             });
     }
 
-    // GRUND-FILTERLOGIK FÜR SPIELKLASSEN
     function getFilteredRoster() {
         const rosterJson = localStorage.getItem('wesermarsch_pokal_roster');
         if (!rosterJson) return [];
@@ -2085,7 +2308,6 @@
             let suffix = '';
 
             if (selectedSpielklasse === 'erwachsene') {
-                // Bei Erwachsenen prüfen, ob der Mannschaftsname "DS" enthält -> (Damen) anhängen
                 let vereinUpper = baseClub.toUpperCase();
                 if (vereinUpper.includes('DS')) {
                     suffix = ' (Damen)';
@@ -2124,7 +2346,6 @@
         });
     }
 
-    // SPIELERFILTERUNG NACH AUSGEWÄHLTER MANNSCHAFT & UNTERKATEGORIE
     function getPlayersForTeam(teamSelectId) {
         const selectEl = document.getElementById(teamSelectId);
         if (!selectEl) return [];
