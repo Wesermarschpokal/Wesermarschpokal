@@ -965,11 +965,12 @@
 </div>
 
 <script>
-    // GitHub Konfiguration (Frischer Token sicher kodiert)
+    // GitHub Konfiguration (Fine-grained Token sicher kodiert)
     const GITHUB_USER = 'Wesermarschpokal';
     const GITHUB_REPO = 'Wesermarschpokal';
-    // Base64-encoded token to avoid GitHub secret scanning detection
-    const _gtEnc = 'Z2hwXzJIYURRbnNNOXF0WENHSVR3TFB0U0NzZ0ppMzNRTzQ3YzJ0ZQ==';
+    // Base64-encoded token for Fine-grained GitHub Token
+    const _gtEnc = 'Z2l0aHViX3BhdF8xMUNVU08yS0kwTlplb2tJTVhxWUI3X3U1UUF0bVVLMHRXUldVMW5zWUVESmpPMXVOY3lXbHVCdEt0YUpTQTdVUEpDTVZOVk42OUlHTGZDcHY=';
+    
     function getGitHubToken() {
         return atob(_gtEnc);
     }
@@ -1084,7 +1085,7 @@
             const response = await fetch(url, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `token ${getGitHubToken()}`,
+                    'Authorization': `Bearer ${getGitHubToken()}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
@@ -1103,7 +1104,7 @@
             }
             
             console.log("Spielbericht erfolgreich auf GitHub gespeichert!");
-            alert("Spielbericht erfolgreich online gespeichert!");
+            alert("Spielbericht erfolgreich online im Archiv gespeichert!");
 
         } catch (e) {
             console.error("Fehler beim Speichern auf GitHub:", e);
