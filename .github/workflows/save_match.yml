@@ -1,1 +1,30 @@
+name: Spielbericht automatisch speichern
+
+on:
+  repository_dispatch:
+    types: [save-match-report]
+
+permissions:
+  contents: write
+
+jobs:
+  save-to-archiv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: JSON-Datei aus Webhook-Payload erstellen
+        run: |
+          mkdir -p archiv
+          echo '${{ github.event.client_payload.json_data }}' > archiv/${{ github.event.client_payload.filename }}.json
+
+      - name: Änderungen committen und pushen
+        uses: stefanzifelder/git-commit-push-action@v3
+        with:
+          commit_message: "Automatischer Spielbericht: ${{ github.event.client_payload.filename }}"
+          branch: main
+          repository: ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
