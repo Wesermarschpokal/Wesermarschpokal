@@ -680,7 +680,7 @@
         <div class="drawer-menu" id="drawerMenu">
             <button type="button" class="drawer-btn" id="btnAdminLogin">🔒 Admin</button>
             <button type="button" class="drawer-btn" id="btnSettings" style="display: none;">⚙️ Einstellungen</button>
-            <a href="uebersicht_spiele.html" target="_blank" class="drawer-btn">📋 Übersicht Spiele</a>
+            <a href="uebersicht_spiele.html" class="drawer-btn">📋 Übersicht Spiele</a>
             <button type="button" class="drawer-btn danger" id="btnResetGame">🔄 Spiel zurücksetzen</button>
         </div>
     </div>
@@ -965,6 +965,11 @@
 </div>
 
 <script>
+    // GitHub Konfiguration
+    const GITHUB_USER = 'Wesermarschpokal';
+    const GITHUB_REPO = 'Wesermarschpokal';
+    const GITHUB_TOKEN = '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';
+
     let isLoading = false;
     let isFormCompleted = false;
     let qttrVorgabeActive = false;
@@ -975,9 +980,11 @@
     let isAdminLoggedIn = false;
 
     window.addEventListener('beforeunload', function (e) {
-        e.preventDefault();
-        e.returnValue = 'Möchten Sie die Seite wirklich verlassen? Alle nicht gespeicherten Eingaben gehen verloren.';
-        return e.returnValue;
+        if (!isFormCompleted) {
+            e.preventDefault();
+            e.returnValue = 'Möchten Sie die Seite wirklich verlassen? Alle nicht gespeicherten Eingaben gehen verloren.';
+            return e.returnValue;
+        }
     });
 
     const matchesDef = [
@@ -1057,7 +1064,42 @@
         return sel.options[sel.selectedIndex].text.trim();
     }
 
-    function saveFinishedGameToArchive(pdfDataUri = '') {
+    async function uploadGameToGitHub(gameRecord, pdfDataUri) {
+        try {
+            const fileName = `archiv/spiel_${Date.now()}.json`;
+            const fileContentObj = {
+                ...gameRecord,
+                pdfData: pdfDataUri
+            };
+            
+            const jsonString = JSON.stringify(fileContentObj, null, 2);
+            const base64Content = btoa(unescape(encodeURIComponent(jsonString)));
+
+            const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${fileName}`;
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: `Neuer Spielbericht hinzugefügt: ${gameRecord.heimName} vs ${gameRecord.gastName}`,
+                    content: base64Content
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`GitHub Upload fehlgeschlagen: ${response.statusText}`);
+            }
+            console.log("Spielbericht erfolgreich auf GitHub gespeichert!");
+        } catch (e) {
+            console.error("Fehler beim Speichern auf GitHub:", e);
+            alert("Der Spielbericht konnte nicht online gespeichert werden. Bitte Internetverbindung prüfen.");
+        }
+    }
+
+    async function saveFinishedGameToArchive(pdfDataUri = '') {
         try {
             const datum = document.getElementById('datum').value || '';
             const uhrzeit = document.getElementById('uhrzeit').value || '';
@@ -1092,15 +1134,12 @@
                 baelle: `${totalBaelleA} : ${totalBaelleB}`,
                 saetze: totalSaetze,
                 punkte: totalPunkte,
-                pdfData: pdfDataUri,
                 timestamp: Date.now()
             };
 
-            let archives = JSON.parse(localStorage.getItem('wesermarsch_spiele_archiv') || '[]');
-            archives.unshift(gameRecord);
-            localStorage.setItem('wesermarsch_spiele_archiv', JSON.stringify(archives));
+            await uploadGameToGitHub(gameRecord, pdfDataUri);
         } catch (e) {
-            console.error("Fehler beim Speichern in der Spiele-Übersicht:", e);
+            console.error("Fehler beim Speichern auf GitHub:", e);
         }
     }
 
@@ -1655,13 +1694,13 @@
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        html2pdf().set(opt).from(element).outputPdf('blob').then((pdfBlob) => {
+        html2pdf().set(opt).from(element).outputPdf('blob').then(async (pdfBlob) => {
             let blobUrl = URL.createObjectURL(pdfBlob);
 
             const reader = new FileReader();
             reader.readAsDataURL(pdfBlob);
-            reader.onloadend = function() {
-                saveFinishedGameToArchive(reader.result);
+            reader.onloadend = async function() {
+                await saveFinishedGameToArchive(reader.result);
             }
 
             element.classList.remove('pdf-export-mode');
