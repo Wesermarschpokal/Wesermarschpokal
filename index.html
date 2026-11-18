@@ -1090,12 +1090,20 @@
             });
 
             if (!response.ok) {
-                throw new Error(`GitHub Upload fehlgeschlagen: ${response.statusText}`);
+                let errorText = response.statusText;
+                try {
+                    const errData = await response.json();
+                    if (errData && errData.message) errorText = errData.message;
+                } catch (err) {}
+                throw new Error(`Status ${response.status}: ${errorText}`);
             }
+            
             console.log("Spielbericht erfolgreich auf GitHub gespeichert!");
+            alert("Spielbericht erfolgreich online gespeichert!");
+
         } catch (e) {
             console.error("Fehler beim Speichern auf GitHub:", e);
-            alert("Der Spielbericht konnte nicht online gespeichert werden. Bitte Internetverbindung prüfen.");
+            alert("Fehler beim Speichern auf GitHub:\n" + e.message);
         }
     }
 
@@ -1139,7 +1147,7 @@
 
             await uploadGameToGitHub(gameRecord, pdfDataUri);
         } catch (e) {
-            console.error("Fehler beim Speichern auf GitHub:", e);
+            console.error("Fehler beim Vorbereiten des Spielberichts:", e);
         }
     }
 
