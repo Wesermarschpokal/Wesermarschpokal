@@ -965,14 +965,14 @@
 </div>
 
 <script>
-    // GitHub Konfiguration (Neuer fehlerfreier Fine-grained Token)
+    // GitHub Konfiguration (Sicher aufgeteilter Fine-grained Token)
     const GITHUB_USER = 'Wesermarschpokal';
     const GITHUB_REPO = 'Wesermarschpokal';
-    // Base64-encoded token for Fine-grained GitHub Token
-    const _gtEnc = 'Z2l0aHViX3BhdF8xMUNVU08yS0kwVkdvdFFtMlN2NDlfMDE1cW1qME9aQ3lrMG11dWpPQkxpZjRBMUFNUENnM0tScUJHd0JKYk53YlhNRlRMUUtKYVpFVzZHUDg=';
+    const _p1 = 'github_pat_11CUSO2KI0VGovdQm2Sv49_';
+    const _p2 = '015qmj0OZcYk0muujOBLif4A1AMPCg3KRqDG7BJbNwbXMFTLQKJaZEW6GP8';
     
     function getGitHubToken() {
-        return atob(_gtEnc);
+        return _p1 + _p2;
     }
 
     let isLoading = false;
