@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -1099,154 +1100,6 @@
         return sel.options[sel.selectedIndex].text.trim();
     }
 
-    function buildStructuredLineupAndMatches() {
-        const aufstellung = {
-            heim: {
-                A: getPlayerName('A', 'A', false),
-                B: getPlayerName('A', 'B', false),
-                C: getPlayerName('A', 'C', false),
-                doppelErsatz1: {
-                    spieler: getEffectivePlayerValue('spielerA_D1'),
-                    ersetzt: document.getElementById('doppelLetterA1')?.value || ''
-                },
-                doppelErsatz2: {
-                    spieler: getEffectivePlayerValue('spielerA_D2'),
-                    ersetzt: document.getElementById('doppelLetterA2')?.value || ''
-                }
-            },
-            gast: {
-                X: getPlayerName('B', 'X', false),
-                Y: getPlayerName('B', 'Y', false),
-                Z: getPlayerName('B', 'Z', false),
-                doppelErsatz1: {
-                    spieler: getEffectivePlayerValue('spielerB_D1'),
-                    ersetzt: document.getElementById('doppelLetterB1')?.value || ''
-                },
-                doppelErsatz2: {
-                    spieler: getEffectivePlayerValue('spielerB_D2'),
-                    ersetzt: document.getElementById('doppelLetterB2')?.value || ''
-                }
-            }
-        };
-
-        const pASingle = {
-            A: getPlayerName('A', 'A', false),
-            B: getPlayerName('A', 'B', false),
-            C: getPlayerName('A', 'C', false)
-        };
-        const pBSingle = {
-            X: getPlayerName('B', 'X', false),
-            Y: getPlayerName('B', 'Y', false),
-            Z: getPlayerName('B', 'Z', false)
-        };
-        const pADouble = {
-            A: getPlayerName('A', 'A', true),
-            B: getPlayerName('A', 'B', true),
-            C: getPlayerName('A', 'C', true)
-        };
-        const pBDouble = {
-            X: getPlayerName('B', 'X', true),
-            Y: getPlayerName('B', 'Y', true),
-            Z: getPlayerName('B', 'Z', true)
-        };
-
-        const fTeamEl = document.getElementById('fixedVorgabeTeam');
-        const fValEl = document.getElementById('fixedVorgabeValue');
-        const fixedTeam = fTeamEl ? fTeamEl.value : 'Keine';
-        const fixedVal = fValEl ? (parseInt(fValEl.value, 10) || 1) : 1;
-
-        const spiele = matchesDef.map((m, idx) => {
-            let spielerHeim = [];
-            let spielerGast = [];
-            let vorgabeText = 'Keine';
-
-            if (m.type === 'einzel') {
-                spielerHeim = [pASingle[m.keyA]];
-                spielerGast = [pBSingle[m.keyB]];
-            } else if (m.type === 'doppel') {
-                spielerHeim = [pADouble[m.keysA[0]], pADouble[m.keysA[1]]];
-                spielerGast = [pBDouble[m.keysB[0]], pBDouble[m.keysB[1]]];
-            } else if (m.type === 'frei') {
-                const h1 = document.getElementById('m_12_d_a1')?.value || pADouble.A;
-                const h2 = document.getElementById('m_12_d_a2')?.value || pADouble.B;
-                const g1 = document.getElementById('m_12_d_b1')?.value || pBDouble.X;
-                const g2 = document.getElementById('m_12_d_b2')?.value || pBDouble.Y;
-                spielerHeim = [h1, h2];
-                spielerGast = [g1, g2];
-            }
-
-            if (qttrVorgabeActive) {
-                if (m.type === 'einzel') {
-                    const qA = getPlayerQttr('A', m.keyA, false);
-                    const qB = getPlayerQttr('B', m.keyB, false);
-                    const calcV = calculateQttrVorgabePoints(qA, qB);
-                    if (calcV > 0) {
-                        vorgabeText = qA < qB ? `Heim (+${calcV})` : `Gast (+${calcV})`;
-                    }
-                } else {
-                    const keysA = m.type === 'doppel' ? m.keysA : ['A', 'B'];
-                    const keysB = m.type === 'doppel' ? m.keysB : ['X', 'Y'];
-                    const qA = Math.round((getPlayerQttr('A', keysA[0], true) + getPlayerQttr('A', keysA[1], true)) / 2);
-                    const qB = Math.round((getPlayerQttr('B', keysB[0], true) + getPlayerQttr('B', keysB[1], true)) / 2);
-                    const calcV = calculateQttrVorgabePoints(qA, qB);
-                    if (calcV > 0) {
-                        vorgabeText = qA < qB ? `Heim (+${calcV})` : `Gast (+${calcV})`;
-                    }
-                }
-            } else if (fixedTeam === 'Heim') {
-                vorgabeText = `Heim (+${fixedVal})`;
-            } else if (fixedTeam === 'Gast') {
-                vorgabeText = `Gast (+${fixedVal})`;
-            }
-
-            let saetzeHeim = 0;
-            let saetzeGast = 0;
-            const saetze = [];
-
-            for (let s = 1; s <= 5; s++) {
-                const input = document.getElementById(`m_${idx}_s${s}`);
-                const rawVal = input ? input.value.trim() : '';
-                if (!rawVal) continue;
-
-                const formatted = formatSatzInput(rawVal);
-                const parsed = parseSatzScore(rawVal);
-                let gewinner = null;
-
-                if (parsed) {
-                    gewinner = isSetWon(parsed.valA, parsed.valB);
-                    if (gewinner === 'A') saetzeHeim++;
-                    if (gewinner === 'B') saetzeGast++;
-                }
-
-                saetze.push({
-                    satz: s,
-                    ergebnis: formatted,
-                    punkteHeim: parsed ? parsed.valA : null,
-                    punkteGast: parsed ? parsed.valB : null,
-                    gewinner: gewinner
-                });
-            }
-
-            const punkteHeim = saetzeHeim === 3 ? 1 : 0;
-            const punkteGast = saetzeGast === 3 ? 1 : 0;
-
-            return {
-                nr: idx + 1,
-                typ: m.type,
-                spielerHeim: spielerHeim,
-                spielerGast: spielerGast,
-                vorgabe: vorgabeText,
-                saetzeHeim: saetzeHeim,
-                saetzeGast: saetzeGast,
-                punkteHeim: punkteHeim,
-                punkteGast: punkteGast,
-                saetze: saetze
-            };
-        });
-
-        return { aufstellung, spiele };
-    }
-
     async function uploadGameToGitHub(gameRecord, pdfDataUri) {
         try {
             const fileName = `archiv/spiel_${Date.now()}.json`;
@@ -1294,22 +1147,22 @@
         try {
             const datum = document.getElementById('datum').value || '';
             const uhrzeit = document.getElementById('uhrzeit').value || '';
-            const spielende = document.getElementById('spielende').value || '';
             const heimName = getSelectedTeamDisplayName('heimName');
             const gastName = getSelectedTeamDisplayName('gastName');
             const spielklasse = document.getElementById('spielklasse').value || 'Erwachsene';
-            const sieger = document.getElementById('sieger').value || 'Offen';
-
-            const { aufstellung, spiele } = buildStructuredLineupAndMatches();
 
             let totalBaelleA = 0, totalBaelleB = 0;
-            spiele.forEach(spiel => {
-                spiel.saetze.forEach(satz => {
-                    if (typeof satz.punkteHeim === 'number' && typeof satz.punkteGast === 'number') {
-                        totalBaelleA += satz.punkteHeim;
-                        totalBaelleB += satz.punkteGast;
+            matchesDef.forEach((_, idx) => {
+                for (let s = 1; s <= 5; s++) {
+                    let el = document.getElementById(`m_${idx}_s${s}`);
+                    if (el && el.value.trim()) {
+                        let parsed = parseSatzScore(el.value);
+                        if (parsed) {
+                            totalBaelleA += parsed.valA;
+                            totalBaelleB += parsed.valB;
+                        }
                     }
-                });
+                }
             });
 
             const totalSaetze = document.getElementById('totalSaetzeCell').innerText || '0 : 0';
@@ -1319,16 +1172,12 @@
                 id: `spiel_${Date.now()}`,
                 datum: datum,
                 uhrzeit: uhrzeit,
-                spielende: spielende,
                 heimName: heimName,
                 gastName: gastName,
                 spielklasse: spielklasse,
-                sieger: sieger,
                 baelle: `${totalBaelleA} : ${totalBaelleB}`,
                 saetze: totalSaetze,
                 punkte: totalPunkte,
-                aufstellung: aufstellung,
-                spiele: spiele,
                 timestamp: Date.now()
             };
 
