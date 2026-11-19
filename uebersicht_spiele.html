@@ -13,6 +13,8 @@
             --text-main: #0f172a;
             --text-muted: #64748b;
             --border-color: #cbd5e1;
+            --success-bg: #dcfce7;
+            --success-text: #166534;
             --danger-bg: #fee2e2;
             --danger-text: #991b1b;
         }
@@ -190,6 +192,68 @@
             color: var(--text-muted);
             font-size: 0.92rem;
         }
+
+        /* PDF Vorschau Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #ffffff;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 900px;
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 1rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .modal-body {
+            flex: 1;
+            background: #e2e8f0;
+        }
+
+        .modal-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
@@ -245,6 +309,18 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="pdfModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="pdfModalTitle">Spielbericht (PDF)</h3>
+            <button type="button" class="close-btn" id="closePdfModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <iframe id="pdfFrame" title="PDF Vorschau"></iframe>
+        </div>
+    </div>
+</div>
+
 <script>
     const GITHUB_USER = 'Wesermarschpokal';
     const GITHUB_REPO = 'Wesermarschpokal';
@@ -263,6 +339,11 @@
         box.textContent = message;
     }
 
+    /**
+     * Wandelt Spieldatum (YYYY-MM-DD) und optional Uhrzeit (HH:MM) in einen numerischen
+     * Zeitstempel für die chronologische Sortierung nach Spieldatum um.
+     * Gibt null zurück, wenn kein gültiges Spieldatum vorhanden ist.
+     */
     function getMatchDateSortValue(game) {
         const rawDate = (game && game.datum ? String(game.datum) : '').trim();
         const dateMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -300,6 +381,7 @@
             const timeA = getMatchDateSortValue(a);
             const timeB = getMatchDateSortValue(b);
 
+            // Spiele ohne Spieldatum immer ans Ende stellen
             if (timeA === null && timeB === null) {
                 return ((b.timestamp || 0) - (a.timestamp || 0));
             }
@@ -310,6 +392,7 @@
                 return (timeA - timeB) * direction;
             }
 
+            // Bei identischem Spieldatum/Uhrzeit sekundär nach timestamp sortieren
             return ((b.timestamp || 0) - (a.timestamp || 0));
         });
     }
@@ -322,69 +405,6 @@
             bytes[i] = binaryStr.charCodeAt(i);
         }
         return new TextDecoder('utf-8').decode(bytes);
-    }
-
-    function createPdfFile(game) {
-        const pdfData = game && game.pdfData;
-        if (!pdfData || typeof pdfData !== 'string') return null;
-
-        let base64Part = pdfData.trim();
-        if (base64Part.includes(',')) {
-            base64Part = base64Part.split(',')[1];
-        }
-
-        const cleanBase64 = base64Part.replace(/\s+/g, '');
-        const binaryStr = atob(cleanBase64);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
-        }
-
-        const safeHeim = (game.heimName || 'Heim').replace(/[^a-zA-Z0-9_-]/g, '_');
-        const safeGast = (game.gastName || 'Gast').replace(/[^a-zA-Z0-9_-]/g, '_');
-        const datumPart = game.datum || 'Pokal';
-        const fileName = `Spielbericht_${datumPart}_${safeHeim}_vs_${safeGast}.pdf`;
-
-        return new File([bytes], fileName, { type: 'application/pdf' });
-    }
-
-    async function openPdfPreview(game) {
-        if (!game || !game.pdfData) {
-            alert('Für dieses Spiel ist kein PDF hinterlegt.');
-            return;
-        }
-
-        try {
-            const pdfFile = createPdfFile(game);
-            if (!pdfFile) {
-                alert('Das PDF konnte nicht verarbeitet werden.');
-                return;
-            }
-
-            if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [pdfFile] }))) {
-                await navigator.share({
-                    title: pdfFile.name,
-                    files: [pdfFile]
-                });
-                return;
-            }
-
-            const blobUrl = URL.createObjectURL(pdfFile);
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-        } catch (err) {
-            if (err && err.name === 'AbortError') {
-                return;
-            }
-            console.error('Fehler beim Teilen/Öffnen des PDFs:', err);
-            alert('Fehler beim Öffnen des PDF-Reports: ' + err.message);
-        }
     }
 
     async function loadGamesFromGitHub() {
@@ -439,6 +459,17 @@
             setStatus('error', `Spiele konnten nicht geladen werden: ${err.message}`);
             tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Keine Daten verfügbar.</td></tr>';
         }
+    }
+
+    function openPdfPreview(game) {
+        if (!game || !game.pdfData) {
+            alert('Für dieses Spiel ist kein PDF hinterlegt.');
+            return;
+        }
+        document.getElementById('pdfModalTitle').textContent =
+            `Spielbericht: ${game.heimName || 'Heim'} vs. ${game.gastName || 'Gast'} (${formatGermanDate(game.datum)})`;
+        document.getElementById('pdfFrame').src = game.pdfData;
+        document.getElementById('pdfModal').classList.add('active');
     }
 
     function renderGames() {
@@ -520,6 +551,18 @@
         document.getElementById('searchInput').addEventListener('input', renderGames);
         document.getElementById('klasseFilter').addEventListener('change', renderGames);
         document.getElementById('sortOrderSelect').addEventListener('change', renderGames);
+
+        const pdfModal = document.getElementById('pdfModal');
+        document.getElementById('closePdfModal').addEventListener('click', () => {
+            pdfModal.classList.remove('active');
+            document.getElementById('pdfFrame').src = '';
+        });
+        pdfModal.addEventListener('click', (e) => {
+            if (e.target === pdfModal) {
+                pdfModal.classList.remove('active');
+                document.getElementById('pdfFrame').src = '';
+            }
+        });
 
         loadGamesFromGitHub();
     });
