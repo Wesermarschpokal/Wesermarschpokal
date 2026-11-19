@@ -1152,17 +1152,60 @@
             const spielklasse = document.getElementById('spielklasse').value || 'Erwachsene';
 
             let totalBaelleA = 0, totalBaelleB = 0;
-            matchesDef.forEach((_, idx) => {
+            const matchesDetail = matchesDef.map((m, idx) => {
+                let saetzeA = 0;
+                let saetzeB = 0;
+                const sets = [];
+
                 for (let s = 1; s <= 5; s++) {
-                    let el = document.getElementById(`m_${idx}_s${s}`);
-                    if (el && el.value.trim()) {
-                        let parsed = parseSatzScore(el.value);
-                        if (parsed) {
-                            totalBaelleA += parsed.valA;
-                            totalBaelleB += parsed.valB;
-                        }
+                    const el = document.getElementById(`m_${idx}_s${s}`);
+                    const raw = el ? el.value.trim() : '';
+                    if (!raw) continue;
+
+                    const parsed = parseSatzScore(raw);
+                    if (parsed) {
+                        totalBaelleA += parsed.valA;
+                        totalBaelleB += parsed.valB;
+                        sets.push(`${parsed.valA}:${parsed.valB}`);
+                        const winner = isSetWon(parsed.valA, parsed.valB);
+                        if (winner === 'A') saetzeA++;
+                        if (winner === 'B') saetzeB++;
+                    } else {
+                        sets.push(raw);
                     }
                 }
+
+                let playerA = '';
+                let playerB = '';
+                if (m.type === 'einzel') {
+                    playerA = getPlayerName('A', m.keyA, false);
+                    playerB = getPlayerName('B', m.keyB, false);
+                } else if (m.type === 'doppel') {
+                    playerA = `${getPlayerName('A', m.keysA[0], true)} / ${getPlayerName('A', m.keysA[1], true)}`;
+                    playerB = `${getPlayerName('B', m.keysB[0], true)} / ${getPlayerName('B', m.keysB[1], true)}`;
+                } else if (m.type === 'frei') {
+                    const fa1 = document.getElementById('m_12_d_a1')?.value || getPlayerName('A', 'A', true);
+                    const fa2 = document.getElementById('m_12_d_a2')?.value || getPlayerName('A', 'B', true);
+                    const fb1 = document.getElementById('m_12_d_b1')?.value || getPlayerName('B', 'X', true);
+                    const fb2 = document.getElementById('m_12_d_b2')?.value || getPlayerName('B', 'Y', true);
+                    playerA = `${fa1} / ${fa2}`;
+                    playerB = `${fb1} / ${fb2}`;
+                }
+
+                const finished = saetzeA === 3 || saetzeB === 3;
+
+                return {
+                    nr: idx + 1,
+                    type: m.type,
+                    playerA,
+                    playerB,
+                    saetzeA,
+                    saetzeB,
+                    punkteA: finished && saetzeA === 3 ? 1 : 0,
+                    punkteB: finished && saetzeB === 3 ? 1 : 0,
+                    finished,
+                    sets
+                };
             });
 
             const totalSaetze = document.getElementById('totalSaetzeCell').innerText || '0 : 0';
@@ -1178,6 +1221,19 @@
                 baelle: `${totalBaelleA} : ${totalBaelleB}`,
                 saetze: totalSaetze,
                 punkte: totalPunkte,
+                aufstellung: {
+                    heim: {
+                        A: getPlayerName('A', 'A', false),
+                        B: getPlayerName('A', 'B', false),
+                        C: getPlayerName('A', 'C', false)
+                    },
+                    gast: {
+                        X: getPlayerName('B', 'X', false),
+                        Y: getPlayerName('B', 'Y', false),
+                        Z: getPlayerName('B', 'Z', false)
+                    }
+                },
+                matches: matchesDetail,
                 timestamp: Date.now()
             };
 
