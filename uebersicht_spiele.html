@@ -192,68 +192,6 @@
             color: var(--text-muted);
             font-size: 0.92rem;
         }
-
-        /* PDF Vorschau Modal */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.55);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 15px;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: #ffffff;
-            border-radius: 10px;
-            width: 100%;
-            max-width: 900px;
-            height: 85vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .modal-header h3 {
-            margin: 0;
-            color: var(--primary);
-            font-size: 1rem;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.4rem;
-            line-height: 1;
-            cursor: pointer;
-            color: var(--text-muted);
-        }
-
-        .modal-body {
-            flex: 1;
-            background: #e2e8f0;
-        }
-
-        .modal-body iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
     </style>
 </head>
 <body>
@@ -306,18 +244,6 @@
                 </tr>
             </tbody>
         </table>
-    </div>
-</div>
-
-<div class="modal-overlay" id="pdfModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="pdfModalTitle">Spielbericht (PDF)</h3>
-            <button type="button" class="close-btn" id="closePdfModal">&times;</button>
-        </div>
-        <div class="modal-body">
-            <iframe id="pdfFrame" title="PDF Vorschau"></iframe>
-        </div>
     </div>
 </div>
 
@@ -461,15 +387,52 @@
         }
     }
 
+    function pdfDataToBlob(pdfData) {
+        if (!pdfData || typeof pdfData !== 'string') {
+            return null;
+        }
+
+        if (pdfData.startsWith('blob:')) {
+            return pdfData;
+        }
+
+        const base64Part = pdfData.includes(',') ? pdfData.split(',')[1] : pdfData;
+        const cleanBase64 = base64Part.replace(/\s/g, '');
+        const binaryStr = atob(cleanBase64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+        }
+        return new Blob([bytes], { type: 'application/pdf' });
+    }
+
     function openPdfPreview(game) {
         if (!game || !game.pdfData) {
             alert('Für dieses Spiel ist kein PDF hinterlegt.');
             return;
         }
-        document.getElementById('pdfModalTitle').textContent =
-            `Spielbericht: ${game.heimName || 'Heim'} vs. ${game.gastName || 'Gast'} (${formatGermanDate(game.datum)})`;
-        document.getElementById('pdfFrame').src = game.pdfData;
-        document.getElementById('pdfModal').classList.add('active');
+
+        try {
+            const pdfSource = pdfDataToBlob(game.pdfData);
+            if (!pdfSource) {
+                alert('Ungültige PDF-Daten.');
+                return;
+            }
+
+            const blobUrl = typeof pdfSource === 'string'
+                ? pdfSource
+                : URL.createObjectURL(pdfSource);
+
+            window.open(blobUrl, '_blank');
+
+            if (typeof pdfSource !== 'string') {
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            }
+        } catch (err) {
+            console.error('Fehler beim Öffnen des PDFs:', err);
+            alert('PDF konnte nicht geöffnet werden.');
+        }
     }
 
     function renderGames() {
@@ -551,18 +514,6 @@
         document.getElementById('searchInput').addEventListener('input', renderGames);
         document.getElementById('klasseFilter').addEventListener('change', renderGames);
         document.getElementById('sortOrderSelect').addEventListener('change', renderGames);
-
-        const pdfModal = document.getElementById('pdfModal');
-        document.getElementById('closePdfModal').addEventListener('click', () => {
-            pdfModal.classList.remove('active');
-            document.getElementById('pdfFrame').src = '';
-        });
-        pdfModal.addEventListener('click', (e) => {
-            if (e.target === pdfModal) {
-                pdfModal.classList.remove('active');
-                document.getElementById('pdfFrame').src = '';
-            }
-        });
 
         loadGamesFromGitHub();
     });
