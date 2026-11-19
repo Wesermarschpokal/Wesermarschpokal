@@ -1,3 +1,4 @@
+
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -188,6 +189,17 @@
             font-size: 0.9rem;
             background-color: #fff;
             -webkit-appearance: none;
+        }
+
+        input[type="checkbox"] {
+            -webkit-appearance: checkbox;
+            appearance: checkbox;
+        }
+
+        .manual-player-input {
+            margin-top: 6px;
+            background-color: #fefce8;
+            border-color: #eab308;
         }
 
         .double-input-group {
@@ -750,14 +762,17 @@
                     <div class="form-group">
                         <label>Spieler A</label>
                         <select id="spielerA_A"><option value="">Bitte wählen</option></select>
+                        <input type="text" id="manual_spielerA_A" class="manual-player-input" placeholder="Spieler A manuell (Nachname, Vorname)" style="display: none;">
                     </div>
                     <div class="form-group">
                         <label>Spieler B</label>
                         <select id="spielerA_B"><option value="">Bitte wählen</option></select>
+                        <input type="text" id="manual_spielerA_B" class="manual-player-input" placeholder="Spieler B manuell (Nachname, Vorname)" style="display: none;">
                     </div>
                     <div class="form-group">
                         <label>Spieler C</label>
                         <select id="spielerA_C"><option value="">Bitte wählen</option></select>
+                        <input type="text" id="manual_spielerA_C" class="manual-player-input" placeholder="Spieler C manuell (Nachname, Vorname)" style="display: none;">
                     </div>
                     <div class="form-group">
                         <label>Nur Doppel für:</label>
@@ -765,6 +780,7 @@
                             <select id="spielerA_D1"><option value="">Keiner (optional)</option></select>
                             <select id="doppelLetterA1"><option value="A">A</option><option value="B">B</option><option value="C">C</option></select>
                         </div>
+                        <input type="text" id="manual_spielerA_D1" class="manual-player-input" placeholder="Ersatzspieler Doppel 1 (Nachname, Vorname)" style="display: none;">
                     </div>
                     <div class="form-group">
                         <label>Nur Doppel für:</label>
@@ -772,6 +788,7 @@
                             <select id="spielerA_D2"><option value="">Keiner (optional)</option></select>
                             <select id="doppelLetterA2"><option value="B">B</option><option value="A">A</option><option value="C">C</option></select>
                         </div>
+                        <input type="text" id="manual_spielerA_D2" class="manual-player-input" placeholder="Ersatzspieler Doppel 2 (Nachname, Vorname)" style="display: none;">
                     </div>
                 </div>
 
@@ -787,14 +804,17 @@
                     <div class="form-group">
                         <label>Spieler X</label>
                         <select id="spielerB_A"><option value="">Bitte wählen</option></select>
+                        <input type="text" id="manual_spielerB_A" class="manual-player-input" placeholder="Spieler X manuell (Nachname, Vorname)" style="display: none;">
                     </div>
                     <div class="form-group">
                         <label>Spieler Y</label>
                         <select id="spielerB_B"><option value="">Bitte wählen</option></select>
+                        <input type="text" id="manual_spielerB_B" class="manual-player-input" placeholder="Spieler Y manuell (Nachname, Vorname)" style="display: none;">
                     </div>
                     <div class="form-group">
                         <label>Spieler Z</label>
                         <select id="spielerB_C"><option value="">Bitte wählen</option></select>
+                        <input type="text" id="manual_spielerB_C" class="manual-player-input" placeholder="Spieler Z manuell (Nachname, Vorname)" style="display: none;">
                     </div>
                     <div class="form-group">
                         <label>Nur Doppel für:</label>
@@ -802,6 +822,7 @@
                             <select id="spielerB_D1"><option value="">Keiner (optional)</option></select>
                             <select id="doppelLetterB1"><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option></select>
                         </div>
+                        <input type="text" id="manual_spielerB_D1" class="manual-player-input" placeholder="Ersatzspieler Doppel 1 (Nachname, Vorname)" style="display: none;">
                     </div>
                     <div class="form-group">
                         <label>Nur Doppel für:</label>
@@ -809,6 +830,7 @@
                             <select id="spielerB_D2"><option value="">Keiner (optional)</option></select>
                             <select id="doppelLetterB2"><option value="Y">Y</option><option value="X">X</option><option value="Z">Z</option></select>
                         </div>
+                        <input type="text" id="manual_spielerB_D2" class="manual-player-input" placeholder="Ersatzspieler Doppel 2 (Nachname, Vorname)" style="display: none;">
                     </div>
                 </div>
             </div>
@@ -970,6 +992,7 @@
     const GITHUB_REPO = 'Wesermarschpokal';
     const _p1 = 'github_pat_11CUSO2KI0VGovdQm2Sv49_';
     const _p2 = '015qmj0OZcYk0muujOBLif4A1AMPCg3KRqDG7BJbNwbXMFTLQKJaZEW6GP8';
+    const MANUAL_PLAYER_OPTION = '__MANUAL_PLAYER__';
     
     function getGitHubToken() {
         return _p1 + _p2;
@@ -1015,7 +1038,8 @@
     function closeSystemModal() { document.getElementById('systemModal').classList.remove('active'); }
 
     function openAdminModal() { 
-        document.getElementById('drawerMenu').classList.remove('active');
+        const drawer = document.getElementById('drawerMenu');
+        if (drawer) drawer.classList.remove('active');
         document.getElementById('adminUser').value = '';
         document.getElementById('adminPass').value = '';
         document.getElementById('loginError').style.display = 'none';
@@ -1045,8 +1069,15 @@
     }
 
     function openSettingsModal() {
-        document.getElementById('drawerMenu').classList.remove('active');
-        document.getElementById('toggleQttrVorgabe').checked = qttrVorgabeActive;
+        const drawer = document.getElementById('drawerMenu');
+        if (drawer) drawer.classList.remove('active');
+
+        const toggleEl = document.getElementById('toggleQttrVorgabe');
+        if (toggleEl) {
+            toggleEl.disabled = false;
+            toggleEl.checked = Boolean(qttrVorgabeActive);
+        }
+
         document.getElementById('stepErwachsene').value = stepErwachsene;
         document.getElementById('stepJugend19').value = stepJugend19;
         document.getElementById('stepJugend15').value = stepJugend15;
@@ -1165,11 +1196,14 @@
 
     function applyQttrUIVisibility() {
         const manualCard = document.getElementById('manualVorgabeCard');
-        if (manualCard) manualCard.style.display = qttrVorgabeActive ? 'none' : 'block';
+        if (manualCard) {
+            manualCard.style.display = qttrVorgabeActive ? 'none' : 'block';
+        }
     }
 
     function saveSettings() {
-        qttrVorgabeActive = document.getElementById('toggleQttrVorgabe').checked;
+        const toggleEl = document.getElementById('toggleQttrVorgabe');
+        qttrVorgabeActive = toggleEl ? Boolean(toggleEl.checked) : false;
         stepErwachsene = parseInt(document.getElementById('stepErwachsene').value, 10) || 35;
         stepJugend19 = parseInt(document.getElementById('stepJugend19').value, 10) || 35;
         stepJugend15 = parseInt(document.getElementById('stepJugend15').value, 10) || 35;
@@ -1211,22 +1245,46 @@
         }
     }
 
+    function getEffectivePlayerValue(selectId) {
+        const sel = document.getElementById(selectId);
+        const manualInput = document.getElementById(`manual_${selectId}`);
+        if (!sel) return '';
+
+        if (sel.value === MANUAL_PLAYER_OPTION) {
+            return manualInput ? manualInput.value.trim() : '';
+        }
+        return sel.value.trim();
+    }
+
+    function toggleManualInput(selectId) {
+        const sel = document.getElementById(selectId);
+        const manualInput = document.getElementById(`manual_${selectId}`);
+        if (!sel || !manualInput) return;
+
+        if (sel.value === MANUAL_PLAYER_OPTION) {
+            manualInput.style.display = 'block';
+        } else {
+            manualInput.style.display = 'none';
+            manualInput.value = '';
+        }
+    }
+
     function getPlayerName(team, letter, isDouble = false) {
         if (isDouble) {
             if (team === 'A') {
-                const sub1 = document.getElementById('spielerA_D1').value.trim();
+                const sub1 = getEffectivePlayerValue('spielerA_D1');
                 const let1 = document.getElementById('doppelLetterA1').value;
                 if (sub1 && letter === let1) return sub1;
 
-                const sub2 = document.getElementById('spielerA_D2').value.trim();
+                const sub2 = getEffectivePlayerValue('spielerA_D2');
                 const let2 = document.getElementById('doppelLetterA2').value;
                 if (sub2 && letter === let2) return sub2;
             } else if (team === 'B') {
-                const sub1 = document.getElementById('spielerB_D1').value.trim();
+                const sub1 = getEffectivePlayerValue('spielerB_D1');
                 const let1 = document.getElementById('doppelLetterB1').value;
                 if (sub1 && letter === let1) return sub1;
 
-                const sub2 = document.getElementById('spielerB_D2').value.trim();
+                const sub2 = getEffectivePlayerValue('spielerB_D2');
                 const let2 = document.getElementById('doppelLetterB2').value;
                 if (sub2 && letter === let2) return sub2;
             }
@@ -1238,9 +1296,9 @@
         };
         const inputId = idMap[letter];
         if (inputId) {
-            const selectEl = document.getElementById(inputId);
-            if (selectEl && selectEl.value.trim() !== '') {
-                return selectEl.value.trim();
+            const val = getEffectivePlayerValue(inputId);
+            if (val !== '') {
+                return val;
             }
         }
 
@@ -1691,7 +1749,7 @@
 
         ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
             const field = document.getElementById(id);
-            if (field && !field.value.trim()) {
+            if (field && !getEffectivePlayerValue(id)) {
                 field.closest('.form-group').style.display = 'none';
             }
         });
@@ -1750,7 +1808,7 @@
 
         ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
             const field = document.getElementById(id);
-            if (field && !field.value.trim()) {
+            if (field && !getEffectivePlayerValue(id)) {
                 field.closest('.form-group').style.display = 'none';
             }
         });
@@ -1964,7 +2022,9 @@
         const gastPlayers = getPlayersForTeam('gastName');
 
         const heimIds = ['spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2'];
-        const selectedHeim = heimIds.map(id => document.getElementById(id)?.value || '').filter(v => v !== '');
+        const selectedHeim = heimIds
+            .map(id => document.getElementById(id)?.value || '')
+            .filter(v => v !== '' && v !== MANUAL_PLAYER_OPTION);
 
         heimIds.forEach(id => {
             const sel = document.getElementById(id);
@@ -1976,11 +2036,15 @@
                     sel.add(new Option(p, p));
                 }
             });
-            sel.value = heimPlayers.includes(cur) ? cur : '';
+            sel.add(new Option('+ Spieler manuell eingeben...', MANUAL_PLAYER_OPTION));
+            sel.value = [...sel.options].some(o => o.value === cur) ? cur : '';
+            toggleManualInput(id);
         });
 
         const gastIds = ['spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2'];
-        const selectedGast = gastIds.map(id => document.getElementById(id)?.value || '').filter(v => v !== '');
+        const selectedGast = gastIds
+            .map(id => document.getElementById(id)?.value || '')
+            .filter(v => v !== '' && v !== MANUAL_PLAYER_OPTION);
 
         gastIds.forEach(id => {
             const sel = document.getElementById(id);
@@ -1992,7 +2056,9 @@
                     sel.add(new Option(p, p));
                 }
             });
-            sel.value = gastPlayers.includes(cur) ? cur : '';
+            sel.add(new Option('+ Spieler manuell eingeben...', MANUAL_PLAYER_OPTION));
+            sel.value = [...sel.options].some(o => o.value === cur) ? cur : '';
+            toggleManualInput(id);
         });
     }
 
@@ -2049,10 +2115,17 @@
             if (el) {
                 el.addEventListener('change', (e) => {
                     syncDoubleLetters(e.target.id);
+                    toggleManualInput(e.target.id);
                     updatePlayerDropdowns();
                     renderMatchTable();
                 });
             }
+        });
+
+        document.querySelectorAll('.manual-player-input').forEach(input => {
+            input.addEventListener('input', () => {
+                renderMatchTable();
+            });
         });
 
         document.getElementById('btn-tab1').addEventListener('click', () => switchTab('tab1'));
@@ -2068,10 +2141,15 @@
         document.getElementById('btnResetGame').addEventListener('click', () => {
             if (confirm('Spiel zurücksetzen?')) {
                 document.getElementById('pokalForm').reset();
+                document.querySelectorAll('.manual-player-input').forEach(input => {
+                    input.value = '';
+                    input.style.display = 'none';
+                });
+                applyQttrUIVisibility();
                 updateAllDropdowns();
                 renderMatchTable();
                 switchTab('tab1');
-                drawerMenu.classList.remove('active');
+                if (drawerMenu) drawerMenu.classList.remove('active');
             }
         });
 
