@@ -253,7 +253,7 @@
     <div class="top-bar">
         <div class="title-group">
             <h1>Statistik – Wesermarschpokal</h1>
-            <p>Auswertung von Spiel- und Satzbilanzen sowie Einzelspielen</p>
+            <p>Auswertung gespielter Partien (Spiel- und Satzbilanzen)</p>
         </div>
         <div class="actions-bar">
             <button type="button" class="btn btn-secondary btn-sm" id="btnRefresh">🔄 Aktualisieren</button>
@@ -378,6 +378,23 @@
         return match && match.type === 'einzel';
     }
 
+    function getMatchSets(match) {
+        const saetzeA = parseInt(match?.saetzeA, 10) || 0;
+        const saetzeB = parseInt(match?.saetzeB, 10) || 0;
+        return { saetzeA, saetzeB };
+    }
+
+    /**
+     * Eine Partie fließt nur dann ein, wenn sie tatsächlich beendet/gespielt wurde
+     * (3 gewonnene Sätze bzw. finished === true mit klarem Sieger).
+     */
+    function isPlayedMatch(match) {
+        if (!match) return false;
+        const { saetzeA, saetzeB } = getMatchSets(match);
+        const isCompleted = Boolean(match.finished) || saetzeA === 3 || saetzeB === 3;
+        return isCompleted && saetzeA !== saetzeB;
+    }
+
     function parseSetPoints(setStr) {
         if (!setStr || typeof setStr !== 'string') return null;
         const parts = setStr.trim().split(':');
@@ -422,23 +439,9 @@
         games.forEach(game => {
             if (selectedKlasse && (game.spielklasse || '') !== selectedKlasse) return;
 
-            if (game.aufstellung) {
-                ['heim', 'gast'].forEach(side => {
-                    const obj = game.aufstellung[side];
-                    if (obj && typeof obj === 'object') {
-                        Object.values(obj).forEach(val => {
-                            const clean = normalizeName(val);
-                            const key = normalizeKey(clean);
-                            if (key && !map.has(key)) {
-                                map.set(key, clean);
-                            }
-                        });
-                    }
-                });
-            }
-
             if (Array.isArray(game.matches)) {
                 game.matches.forEach(m => {
+                    if (!isPlayedMatch(m)) return;
                     [m.playerA, m.playerB].forEach(sideStr => {
                         normalizeName(sideStr).split('/').forEach(part => {
                             const clean = normalizeName(part);
@@ -550,8 +553,8 @@
         const isDouble = mode === 'doppel';
         heading.textContent = isDouble ? 'Doppelpaarungen – Bilanz' : 'Spieler – Bilanz';
         subheading.textContent = selectedKlasse
-            ? `Spielklasse: ${selectedKlasse} · ${isDouble ? 'Zusammengefasste Paarungen' : 'Einzelbilanz'}`
-            : `Alle Spielklassen · ${isDouble ? 'Zusammengefasste Paarungen' : 'Einzelbilanz'}`;
+            ? `Spielklasse: ${selectedKlasse} · ${isDouble ? 'Zusammengefasste Paarungen' : 'Einzelbilanz'} · Nur gespielte Partien`
+            : `Alle Spielklassen · ${isDouble ? 'Zusammengefasste Paarungen' : 'Einzelbilanz'} · Nur gespielte Partien`;
 
         thead.innerHTML = `
             <tr>
@@ -582,13 +585,11 @@
             if (!Array.isArray(game.matches)) return;
 
             game.matches.forEach(m => {
+                if (!isPlayedMatch(m)) return;
                 if (isDouble && !isDoubleMatch(m)) return;
                 if (!isDouble && !isSingleMatch(m)) return;
 
-                const saetzeA = parseInt(m.saetzeA, 10) || 0;
-                const saetzeB = parseInt(m.saetzeB, 10) || 0;
-                const finished = Boolean(m.finished) || saetzeA === 3 || saetzeB === 3;
-
+                const { saetzeA, saetzeB } = getMatchSets(m);
                 const labelA = isDouble ? getNormalizedDoubleLabel(m.playerA) : normalizeName(m.playerA);
                 const labelB = isDouble ? getNormalizedDoubleLabel(m.playerB) : normalizeName(m.playerB);
 
@@ -597,10 +598,8 @@
                     const entryA = ensureEntry(keyA, labelA);
                     entryA.setsWon += saetzeA;
                     entryA.setsLost += saetzeB;
-                    if (finished) {
-                        if (saetzeA > saetzeB) entryA.wins += 1;
-                        else if (saetzeB > saetzeA) entryA.losses += 1;
-                    }
+                    if (saetzeA > saetzeB) entryA.wins += 1;
+                    else if (saetzeB > saetzeA) entryA.losses += 1;
                 }
 
                 if (labelB) {
@@ -608,10 +607,8 @@
                     const entryB = ensureEntry(keyB, labelB);
                     entryB.setsWon += saetzeB;
                     entryB.setsLost += saetzeA;
-                    if (finished) {
-                        if (saetzeB > saetzeA) entryB.wins += 1;
-                        else if (saetzeA > saetzeB) entryB.losses += 1;
-                    }
+                    if (saetzeB > saetzeA) entryB.wins += 1;
+                    else if (saetzeA > saetzeB) entryB.losses += 1;
                 }
             });
         });
@@ -625,7 +622,7 @@
         });
 
         if (rows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Keine passenden Spielstatistiken gefunden.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Keine gespielten Partien für diese Auswahl gefunden.</td></tr>';
             return;
         }
 
@@ -662,8 +659,8 @@
         const playerLabel = playerSelect.options[playerSelect.selectedIndex]?.textContent || playerKey;
         const isDouble = mode === 'doppel';
 
-        heading.textContent = `Spiele von ${playerLabel}`;
-        subheading.textContent = `${selectedKlasse ? 'Spielklasse: ' + selectedKlasse + ' · ' : 'Alle Spielklassen · '}${isDouble ? 'Doppel' : 'Einzel'}`;
+        heading.textContent = `Gespielte Partien von ${playerLabel}`;
+        subheading.textContent = `${selectedKlasse ? 'Spielklasse: ' + selectedKlasse + ' · ' : 'Alle Spielklassen · '}${isDouble ? 'Doppel' : 'Einzel'} · Nur gespielte Partien`;
 
         thead.innerHTML = `
             <tr>
@@ -684,6 +681,7 @@
             if (!Array.isArray(game.matches)) return;
 
             game.matches.forEach(m => {
+                if (!isPlayedMatch(m)) return;
                 if (isDouble && !isDoubleMatch(m)) return;
                 if (!isDouble && !isSingleMatch(m)) return;
 
@@ -696,10 +694,7 @@
 
                 if (!inA && !inB) return;
 
-                const saetzeA = parseInt(m.saetzeA, 10) || 0;
-                const saetzeB = parseInt(m.saetzeB, 10) || 0;
-                const finished = Boolean(m.finished) || saetzeA === 3 || saetzeB === 3;
-
+                const { saetzeA, saetzeB } = getMatchSets(m);
                 const ownSets = inA ? saetzeA : saetzeB;
                 const oppSets = inA ? saetzeB : saetzeA;
 
@@ -707,10 +702,7 @@
                 const ownBalls = inA ? ballsA : ballsB;
                 const oppBalls = inA ? ballsB : ballsA;
 
-                let outcome = 'Offen';
-                if (finished) {
-                    outcome = ownSets > oppSets ? 'Sieg' : 'Niederlage';
-                }
+                const outcome = ownSets > oppSets ? 'Sieg' : 'Niederlage';
 
                 const pairingText = isDouble
                     ? `${getNormalizedDoubleLabel(m.playerA)}  vs.  ${getNormalizedDoubleLabel(m.playerB)}`
@@ -729,7 +721,7 @@
         });
 
         if (playerMatches.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Für diesen Spieler wurden in der gewählten Ansicht keine Spiele gefunden.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Für diesen Spieler wurden in der gewählten Ansicht keine gespielten Partien gefunden.</td></tr>';
             return;
         }
 
@@ -757,10 +749,8 @@
             tdOutcome.className = 'num';
             if (item.outcome === 'Sieg') {
                 tdOutcome.innerHTML = '<span class="result-win">Sieg</span>';
-            } else if (item.outcome === 'Niederlage') {
-                tdOutcome.innerHTML = '<span class="result-loss">Niederlage</span>';
             } else {
-                tdOutcome.textContent = 'Offen';
+                tdOutcome.innerHTML = '<span class="result-loss">Niederlage</span>';
             }
 
             const tdSaetze = document.createElement('td');
