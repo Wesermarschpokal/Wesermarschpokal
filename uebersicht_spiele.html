@@ -407,15 +407,43 @@
         return new Blob([bytes], { type: 'application/pdf' });
     }
 
+    function openUrlSafely(url) {
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        setTimeout(() => {
+            if (anchor.parentNode) anchor.parentNode.removeChild(anchor);
+        }, 1000);
+    }
+
     function openPdfPreview(game) {
         if (!game || !game.pdfData) {
             alert('Für dieses Spiel ist kein PDF hinterlegt.');
             return;
         }
 
+        // Fenster direkt synchron im Click-Handler öffnen (schützt auf iOS/Safari vor Pop-up-Blockern)
+        let popupWin = null;
+        try {
+            popupWin = window.open('', '_blank');
+            if (popupWin && !popupWin.closed) {
+                try {
+                    popupWin.document.title = 'Spielbericht wird geöffnet...';
+                    popupWin.document.body.innerHTML = '<p style="font-family:sans-serif;padding:16px;">PDF wird vorbereitet...</p>';
+                } catch (_) {}
+            }
+        } catch (_) {
+            popupWin = null;
+        }
+
         try {
             const pdfSource = pdfDataToBlob(game.pdfData);
             if (!pdfSource) {
+                if (popupWin && !popupWin.closed) popupWin.close();
                 alert('Ungültige PDF-Daten.');
                 return;
             }
@@ -424,12 +452,21 @@
                 ? pdfSource
                 : URL.createObjectURL(pdfSource);
 
-            window.open(blobUrl, '_blank');
+            if (popupWin && !popupWin.closed) {
+                try {
+                    popupWin.location.replace(blobUrl);
+                } catch (_) {
+                    popupWin.location.href = blobUrl;
+                }
+            } else {
+                openUrlSafely(blobUrl);
+            }
 
             if (typeof pdfSource !== 'string') {
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
             }
         } catch (err) {
+            if (popupWin && !popupWin.closed) popupWin.close();
             console.error('Fehler beim Öffnen des PDFs:', err);
             alert('PDF konnte nicht geöffnet werden.');
         }
