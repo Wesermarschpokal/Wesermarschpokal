@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -323,59 +324,65 @@
         return new TextDecoder('utf-8').decode(bytes);
     }
 
-    function createPdfBlobUrl(pdfData) {
+    function createPdfFile(game) {
+        const pdfData = game && game.pdfData;
         if (!pdfData || typeof pdfData !== 'string') return null;
 
         let base64Part = pdfData.trim();
-        if (base64Part.startsWith('blob:')) {
-            return base64Part;
-        }
         if (base64Part.includes(',')) {
             base64Part = base64Part.split(',')[1];
         }
 
         const cleanBase64 = base64Part.replace(/\s+/g, '');
         const binaryStr = atob(cleanBase64);
-        const len = binaryStr.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
             bytes[i] = binaryStr.charCodeAt(i);
         }
 
-        const pdfBlob = new Blob([bytes], { type: 'application/pdf' });
-        return URL.createObjectURL(pdfBlob);
+        const safeHeim = (game.heimName || 'Heim').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const safeGast = (game.gastName || 'Gast').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const datumPart = game.datum || 'Pokal';
+        const fileName = `Spielbericht_${datumPart}_${safeHeim}_vs_${safeGast}.pdf`;
+
+        return new File([bytes], fileName, { type: 'application/pdf' });
     }
 
-    function openPdfPreview(game) {
+    async function openPdfPreview(game) {
         if (!game || !game.pdfData) {
             alert('Für dieses Spiel ist kein PDF hinterlegt.');
             return;
         }
 
         try {
-            const blobUrl = createPdfBlobUrl(game.pdfData);
-            if (!blobUrl) {
+            const pdfFile = createPdfFile(game);
+            if (!pdfFile) {
                 alert('Das PDF konnte nicht verarbeitet werden.');
                 return;
             }
 
-            const newWin = window.open(blobUrl, '_blank');
-            if (!newWin) {
-                const link = document.createElement('a');
-                link.href = blobUrl;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                link.download = `Spielbericht_${game.datum || 'Pokal'}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+            if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [pdfFile] }))) {
+                await navigator.share({
+                    title: pdfFile.name,
+                    files: [pdfFile]
+                });
+                return;
             }
 
-            if (blobUrl.startsWith('blob:')) {
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-            }
+            const blobUrl = URL.createObjectURL(pdfFile);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
         } catch (err) {
-            console.error('Fehler beim Öffnen des PDFs:', err);
+            if (err && err.name === 'AbortError') {
+                return;
+            }
+            console.error('Fehler beim Teilen/Öffnen des PDFs:', err);
             alert('Fehler beim Öffnen des PDF-Reports: ' + err.message);
         }
     }
