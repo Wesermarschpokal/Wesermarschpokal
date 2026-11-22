@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spielbericht Wesermarschpokal</title>
-    <!-- Library für direkten PDF-Download -->
+    <!-- Library für PDF-Darstellung -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <!-- Library für Excel-Import (SheetJS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -438,15 +438,23 @@
         .btn-success:hover { background-color: #16a34a; }
 
         .tab-footer-actions {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
+            gap: 10px;
             margin-top: 20px;
         }
 
-        .right-buttons {
-            display: flex;
-            gap: 10px;
+        .footer-left {
+            justify-self: start;
+        }
+
+        .footer-center {
+            justify-self: center;
+        }
+
+        .footer-right {
+            justify-self: end;
         }
 
         .sig-container { position: relative; }
@@ -496,6 +504,10 @@
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
+        }
+
+        .pdf-export-mode .tab-content {
+            display: block !important;
         }
 
         .pdf-export-mode .header-print {
@@ -896,10 +908,14 @@
             <div id="validationAlert" class="alert-box"></div>
 
             <div class="tab-footer-actions hide-on-pdf">
-                <button type="button" class="btn btn-secondary" id="back-tab2">&larr; Zurück</button>
-                <div class="right-buttons">
+                <div class="footer-left">
+                    <button type="button" class="btn btn-secondary" id="back-tab2">&larr; Zurück</button>
+                </div>
+                <div class="footer-center">
+                    <button type="button" id="btnPdfPrint" class="btn btn-success">PDF Report</button>
+                </div>
+                <div class="footer-right">
                     <button type="button" id="btnAbschliessen" class="btn">Abschließen</button>
-                    <button type="button" id="btnPdfPrint" class="btn btn-success" style="display: none;">PDF öffnen</button>
                 </div>
             </div>
         </div>
@@ -994,27 +1010,20 @@
     const _p1 = 'github_pat_11CUSO2KI0VGovdQm2Sv49_';
     const _p2 = '015qmj0OZcYk0muujOBLif4A1AMPCg3KRqDG7BJbNwbXMFTLQKJaZEW6GP8';
     const MANUAL_PLAYER_OPTION = '__MANUAL_PLAYER__';
-    
+    const DRAFT_STORAGE_KEY = 'wesermarsch_pokal_draft_state';
+
     function getGitHubToken() {
         return _p1 + _p2;
     }
 
-    let isLoading = false;
-    let isFormCompleted = false;
+    let isRestoringDraft = false;
     let qttrVorgabeActive = false;
     let stepErwachsene = 35;
     let stepJugend19 = 35;
     let stepJugend15 = 35;
     let maxVorgabe = 6;
     let isAdminLoggedIn = false;
-
-    window.addEventListener('beforeunload', function (e) {
-        if (!isFormCompleted) {
-            e.preventDefault();
-            e.returnValue = 'Möchten Sie die Seite wirklich verlassen? Alle nicht gespeicherten Eingaben gehen verloren.';
-            return e.returnValue;
-        }
-    });
+    let uploadedFingerprint = '';
 
     const matchesDef = [
         { type: 'doppel', keysA: ['A', 'B'], keysB: ['X', 'Y'] },
@@ -1034,6 +1043,194 @@
 
     let sigSignedA = false;
     let sigSignedB = false;
+
+    function getCanvasDataUrl(canvasId, isSigned) {
+        if (!isSigned) return '';
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || canvas.width === 0 || canvas.height === 0) return '';
+        try {
+            return canvas.toDataURL('image/png');
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function drawDataUrlToCanvas(canvasId, dataUrl, flagName) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !dataUrl) return;
+        resizeCanvas(canvas);
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            if (flagName === 'A') sigSignedA = true;
+            else sigSignedB = true;
+        };
+        img.src = dataUrl;
+    }
+
+    function getGameFingerprint() {
+        const record = buildGameRecord();
+        const { id, timestamp, ...comparable } = record;
+        return JSON.stringify(comparable);
+    }
+
+    function saveDraftToLocalStorage() {
+        if (isRestoringDraft) return;
+        try {
+            const setInputs = {};
+            matchesDef.forEach((_, idx) => {
+                for (let s = 1; s <= 5; s++) {
+                    const el = document.getElementById(`m_${idx}_s${s}`);
+                    if (el) setInputs[`m_${idx}_s${s}`] = el.value;
+                }
+            });
+
+            const fieldIds = [
+                'spielklasse', 'datum', 'uhrzeit',
+                'fixedVorgabeTeam', 'fixedVorgabeValue',
+                'heimName', 'gastName',
+                'spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2',
+                'manual_spielerA_A', 'manual_spielerA_B', 'manual_spielerA_C', 'manual_spielerA_D1', 'manual_spielerA_D2',
+                'doppelLetterA1', 'doppelLetterA2',
+                'spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2',
+                'manual_spielerB_A', 'manual_spielerB_B', 'manual_spielerB_C', 'manual_spielerB_D1', 'manual_spielerB_D2',
+                'doppelLetterB1', 'doppelLetterB2',
+                'spielende'
+            ];
+
+            const fields = {};
+            fieldIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) fields[id] = el.value;
+            });
+
+            const freeDouble = {
+                m_12_d_a1: document.getElementById('m_12_d_a1')?.value || '',
+                m_12_d_a2: document.getElementById('m_12_d_a2')?.value || '',
+                m_12_d_b1: document.getElementById('m_12_d_b1')?.value || '',
+                m_12_d_b2: document.getElementById('m_12_d_b2')?.value || ''
+            };
+
+            const draft = {
+                fields,
+                freeDouble,
+                setInputs,
+                sigA: getCanvasDataUrl('sigCanvasA', sigSignedA),
+                sigB: getCanvasDataUrl('sigCanvasB', sigSignedB),
+                uploadedFingerprint
+            };
+
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+        } catch (e) {
+            console.warn('Entwurf konnte nicht im localStorage gespeichert werden:', e);
+        }
+    }
+
+    function restoreDraftFromLocalStorage() {
+        try {
+            const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+            if (!raw) return false;
+            const draft = JSON.parse(raw);
+            if (!draft || typeof draft !== 'object') return false;
+
+            isRestoringDraft = true;
+            uploadedFingerprint = draft.uploadedFingerprint || '';
+
+            const fields = draft.fields || {};
+            if (fields.spielklasse) {
+                const skEl = document.getElementById('spielklasse');
+                if (skEl) skEl.value = fields.spielklasse;
+            }
+            if (fields.fixedVorgabeTeam) {
+                const ftEl = document.getElementById('fixedVorgabeTeam');
+                if (ftEl) ftEl.value = fields.fixedVorgabeTeam;
+            }
+            if (fields.fixedVorgabeValue !== undefined) {
+                const fvEl = document.getElementById('fixedVorgabeValue');
+                if (fvEl) fvEl.value = fields.fixedVorgabeValue;
+            }
+            if (fields.datum !== undefined) document.getElementById('datum').value = fields.datum;
+            if (fields.uhrzeit !== undefined) document.getElementById('uhrzeit').value = fields.uhrzeit;
+            if (fields.spielende !== undefined) document.getElementById('spielende').value = fields.spielende;
+
+            updateClubDropdowns();
+            if (fields.heimName) {
+                const hEl = document.getElementById('heimName');
+                if ([...hEl.options].some(o => o.value === fields.heimName)) hEl.value = fields.heimName;
+            }
+            if (fields.gastName) {
+                const gEl = document.getElementById('gastName');
+                if ([...gEl.options].some(o => o.value === fields.gastName)) gEl.value = fields.gastName;
+            }
+
+            updateClubDropdowns();
+            if (fields.heimName) {
+                const hEl = document.getElementById('heimName');
+                if ([...hEl.options].some(o => o.value === fields.heimName)) hEl.value = fields.heimName;
+            }
+            if (fields.gastName) {
+                const gEl = document.getElementById('gastName');
+                if ([...gEl.options].some(o => o.value === fields.gastName)) gEl.value = fields.gastName;
+            }
+
+            updatePlayerDropdowns();
+
+            const playerSelectIds = [
+                'spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2',
+                'spielerB_A', 'spielerB_B', 'spielerB_C', 'spielerB_D1', 'spielerB_D2'
+            ];
+            playerSelectIds.forEach(id => {
+                const sel = document.getElementById(id);
+                if (sel && fields[id] !== undefined) {
+                    if ([...sel.options].some(o => o.value === fields[id])) {
+                        sel.value = fields[id];
+                    }
+                    toggleManualInput(id);
+                    const manualEl = document.getElementById(`manual_${id}`);
+                    if (manualEl && fields[`manual_${id}`] !== undefined) {
+                        manualEl.value = fields[`manual_${id}`];
+                    }
+                }
+            });
+
+            ['doppelLetterA1', 'doppelLetterA2', 'doppelLetterB1', 'doppelLetterB2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && fields[id]) el.value = fields[id];
+            });
+
+            renderMatchTable();
+
+            const freeDouble = draft.freeDouble || {};
+            ['m_12_d_a1', 'm_12_d_a2', 'm_12_d_b1', 'm_12_d_b2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && freeDouble[id] && [...el.options].some(o => o.value === freeDouble[id])) {
+                    el.value = freeDouble[id];
+                }
+            });
+
+            const setInputs = draft.setInputs || {};
+            Object.keys(setInputs).forEach(id => {
+                const el = document.getElementById(id);
+                if (el && setInputs[id] !== undefined) {
+                    el.value = setInputs[id];
+                }
+            });
+
+            calculateMatches();
+
+            if (draft.sigA) drawDataUrlToCanvas('sigCanvasA', draft.sigA, 'A');
+            if (draft.sigB) drawDataUrlToCanvas('sigCanvasB', draft.sigB, 'B');
+
+            isRestoringDraft = false;
+            return true;
+        } catch (e) {
+            isRestoringDraft = false;
+            console.warn('Entwurf konnte nicht wiederhergestellt werden:', e);
+            return false;
+        }
+    }
 
     function openSystemModal() { document.getElementById('systemModal').classList.add('active'); }
     function closeSystemModal() { document.getElementById('systemModal').classList.remove('active'); }
@@ -1101,7 +1298,7 @@
         return sel.options[sel.selectedIndex].text.trim();
     }
 
-    async function uploadGameToGitHub(gameRecord, pdfDataUri) {
+    async function uploadGameToGitHub(gameRecord, pdfDataUri = '', fingerprint = '') {
         try {
             const fileName = `archiv/spiel_${Date.now()}.json`;
             const fileContentObj = {
@@ -1134,113 +1331,124 @@
                 } catch (err) {}
                 throw new Error(`Status ${response.status}: ${errorText}`);
             }
-            
+
+            if (fingerprint) {
+                uploadedFingerprint = fingerprint;
+                saveDraftToLocalStorage();
+            }
+
             console.log("Spielbericht erfolgreich auf GitHub gespeichert!");
             alert("Spielbericht erfolgreich online im Archiv gespeichert!");
+            return true;
 
         } catch (e) {
             console.error("Fehler beim Speichern auf GitHub:", e);
             alert("Fehler beim Speichern auf GitHub:\n" + e.message);
+            return false;
         }
     }
 
-    async function saveFinishedGameToArchive(pdfDataUri = '') {
-        try {
-            const datum = document.getElementById('datum').value || '';
-            const uhrzeit = document.getElementById('uhrzeit').value || '';
-            const heimName = getSelectedTeamDisplayName('heimName');
-            const gastName = getSelectedTeamDisplayName('gastName');
-            const spielklasse = document.getElementById('spielklasse').value || 'Erwachsene';
+    function buildGameRecord() {
+        const datum = document.getElementById('datum').value || '';
+        const uhrzeit = document.getElementById('uhrzeit').value || '';
+        const heimName = getSelectedTeamDisplayName('heimName');
+        const gastName = getSelectedTeamDisplayName('gastName');
+        const spielklasse = document.getElementById('spielklasse').value || 'Erwachsene';
 
-            let totalBaelleA = 0, totalBaelleB = 0;
-            const matchesDetail = matchesDef.map((m, idx) => {
-                let saetzeA = 0;
-                let saetzeB = 0;
-                const sets = [];
+        let totalBaelleA = 0, totalBaelleB = 0;
+        const matchesDetail = matchesDef.map((m, idx) => {
+            let saetzeA = 0;
+            let saetzeB = 0;
+            const sets = [];
 
-                for (let s = 1; s <= 5; s++) {
-                    const el = document.getElementById(`m_${idx}_s${s}`);
-                    const raw = el ? el.value.trim() : '';
-                    if (!raw) continue;
+            for (let s = 1; s <= 5; s++) {
+                const el = document.getElementById(`m_${idx}_s${s}`);
+                const raw = el ? el.value.trim() : '';
+                if (!raw) continue;
 
-                    const parsed = parseSatzScore(raw);
-                    if (parsed) {
-                        totalBaelleA += parsed.valA;
-                        totalBaelleB += parsed.valB;
-                        sets.push(`${parsed.valA}:${parsed.valB}`);
-                        const winner = isSetWon(parsed.valA, parsed.valB);
-                        if (winner === 'A') saetzeA++;
-                        if (winner === 'B') saetzeB++;
-                    } else {
-                        sets.push(raw);
-                    }
+                const parsed = parseSatzScore(raw);
+                if (parsed) {
+                    totalBaelleA += parsed.valA;
+                    totalBaelleB += parsed.valB;
+                    sets.push(`${parsed.valA}:${parsed.valB}`);
+                    const winner = isSetWon(parsed.valA, parsed.valB);
+                    if (winner === 'A') saetzeA++;
+                    if (winner === 'B') saetzeB++;
+                } else {
+                    sets.push(raw);
                 }
+            }
 
-                let playerA = '';
-                let playerB = '';
-                if (m.type === 'einzel') {
-                    playerA = getPlayerName('A', m.keyA, false);
-                    playerB = getPlayerName('B', m.keyB, false);
-                } else if (m.type === 'doppel') {
-                    playerA = `${getPlayerName('A', m.keysA[0], true)} / ${getPlayerName('A', m.keysA[1], true)}`;
-                    playerB = `${getPlayerName('B', m.keysB[0], true)} / ${getPlayerName('B', m.keysB[1], true)}`;
-                } else if (m.type === 'frei') {
-                    const fa1 = document.getElementById('m_12_d_a1')?.value || getPlayerName('A', 'A', true);
-                    const fa2 = document.getElementById('m_12_d_a2')?.value || getPlayerName('A', 'B', true);
-                    const fb1 = document.getElementById('m_12_d_b1')?.value || getPlayerName('B', 'X', true);
-                    const fb2 = document.getElementById('m_12_d_b2')?.value || getPlayerName('B', 'Y', true);
-                    playerA = `${fa1} / ${fa2}`;
-                    playerB = `${fb1} / ${fb2}`;
-                }
+            let playerA = '';
+            let playerB = '';
+            if (m.type === 'einzel') {
+                playerA = getPlayerName('A', m.keyA, false);
+                playerB = getPlayerName('B', m.keyB, false);
+            } else if (m.type === 'doppel') {
+                playerA = `${getPlayerName('A', m.keysA[0], true)} / ${getPlayerName('A', m.keysA[1], true)}`;
+                playerB = `${getPlayerName('B', m.keysB[0], true)} / ${getPlayerName('B', m.keysB[1], true)}`;
+            } else if (m.type === 'frei') {
+                const fa1 = document.getElementById('m_12_d_a1')?.value || getPlayerName('A', 'A', true);
+                const fa2 = document.getElementById('m_12_d_a2')?.value || getPlayerName('A', 'B', true);
+                const fb1 = document.getElementById('m_12_d_b1')?.value || getPlayerName('B', 'X', true);
+                const fb2 = document.getElementById('m_12_d_b2')?.value || getPlayerName('B', 'Y', true);
+                playerA = `${fa1} / ${fa2}`;
+                playerB = `${fb1} / ${fb2}`;
+            }
 
-                const finished = saetzeA === 3 || saetzeB === 3;
+            const finished = saetzeA === 3 || saetzeB === 3;
 
-                return {
-                    nr: idx + 1,
-                    type: m.type,
-                    playerA,
-                    playerB,
-                    saetzeA,
-                    saetzeB,
-                    punkteA: finished && saetzeA === 3 ? 1 : 0,
-                    punkteB: finished && saetzeB === 3 ? 1 : 0,
-                    finished,
-                    sets
-                };
-            });
-
-            const totalSaetze = document.getElementById('totalSaetzeCell').innerText || '0 : 0';
-            const totalPunkte = document.getElementById('totalPunkteCell').innerText || '0 : 0';
-
-            const gameRecord = {
-                id: `spiel_${Date.now()}`,
-                datum: datum,
-                uhrzeit: uhrzeit,
-                heimName: heimName,
-                gastName: gastName,
-                spielklasse: spielklasse,
-                baelle: `${totalBaelleA} : ${totalBaelleB}`,
-                saetze: totalSaetze,
-                punkte: totalPunkte,
-                aufstellung: {
-                    heim: {
-                        A: getPlayerName('A', 'A', false),
-                        B: getPlayerName('A', 'B', false),
-                        C: getPlayerName('A', 'C', false)
-                    },
-                    gast: {
-                        X: getPlayerName('B', 'X', false),
-                        Y: getPlayerName('B', 'Y', false),
-                        Z: getPlayerName('B', 'Z', false)
-                    }
-                },
-                matches: matchesDetail,
-                timestamp: Date.now()
+            return {
+                nr: idx + 1,
+                type: m.type,
+                playerA,
+                playerB,
+                saetzeA,
+                saetzeB,
+                punkteA: finished && saetzeA === 3 ? 1 : 0,
+                punkteB: finished && saetzeB === 3 ? 1 : 0,
+                finished,
+                sets
             };
+        });
 
-            await uploadGameToGitHub(gameRecord, pdfDataUri);
+        const totalSaetze = document.getElementById('totalSaetzeCell').innerText || '0 : 0';
+        const totalPunkte = document.getElementById('totalPunkteCell').innerText || '0 : 0';
+
+        return {
+            id: `spiel_${Date.now()}`,
+            datum: datum,
+            uhrzeit: uhrzeit,
+            heimName: heimName,
+            gastName: gastName,
+            spielklasse: spielklasse,
+            baelle: `${totalBaelleA} : ${totalBaelleB}`,
+            saetze: totalSaetze,
+            punkte: totalPunkte,
+            aufstellung: {
+                heim: {
+                    A: getPlayerName('A', 'A', false),
+                    B: getPlayerName('A', 'B', false),
+                    C: getPlayerName('A', 'C', false)
+                },
+                gast: {
+                    X: getPlayerName('B', 'X', false),
+                    Y: getPlayerName('B', 'Y', false),
+                    Z: getPlayerName('B', 'Z', false)
+                }
+            },
+            matches: matchesDetail,
+            timestamp: Date.now()
+        };
+    }
+
+    async function saveFinishedGameToArchive(pdfDataUri = '', fingerprint = '') {
+        try {
+            const gameRecord = buildGameRecord();
+            return await uploadGameToGitHub(gameRecord, pdfDataUri, fingerprint);
         } catch (e) {
             console.error("Fehler beim Vorbereiten des Spielberichts:", e);
+            return false;
         }
     }
 
@@ -1276,6 +1484,7 @@
         applyQttrUIVisibility();
         updatePdfFooterHint();
         renderMatchTable();
+        saveDraftToLocalStorage();
     }
 
     function switchTab(tabId) {
@@ -1295,9 +1504,13 @@
         if (activeBtn) activeBtn.classList.add('active');
 
         if (tabId === 'tab3') {
+            const savedSigA = sigSignedA ? getCanvasDataUrl('sigCanvasA', true) : '';
+            const savedSigB = sigSignedB ? getCanvasDataUrl('sigCanvasB', true) : '';
             setTimeout(() => {
                 resizeCanvas(document.getElementById('sigCanvasA'));
                 resizeCanvas(document.getElementById('sigCanvasB'));
+                if (savedSigA) drawDataUrlToCanvas('sigCanvasA', savedSigA, 'A');
+                if (savedSigB) drawDataUrlToCanvas('sigCanvasB', savedSigB, 'B');
             }, 50);
         }
     }
@@ -1621,14 +1834,28 @@
 
         ['m_12_d_a1', 'm_12_d_a2', 'm_12_d_b1', 'm_12_d_b2'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.addEventListener('change', () => { checkAdminLockOnInput(); renderMatchTable(); });
+            if (el) {
+                el.addEventListener('change', () => {
+                    checkAdminLockOnInput();
+                    renderMatchTable();
+                    saveDraftToLocalStorage();
+                });
+            }
         });
 
         container.querySelectorAll('.satz-input-single').forEach(input => {
-            input.addEventListener('input', () => { checkAdminLockOnInput(); calculateMatches(); });
+            input.addEventListener('input', () => {
+                checkAdminLockOnInput();
+                calculateMatches();
+                saveDraftToLocalStorage();
+            });
             input.addEventListener('blur', function() {
                 let formatted = formatSatzInput(this.value);
-                if (formatted !== this.value) { this.value = formatted; calculateMatches(); }
+                if (formatted !== this.value) {
+                    this.value = formatted;
+                    calculateMatches();
+                    saveDraftToLocalStorage();
+                }
             });
         });
 
@@ -1761,9 +1988,30 @@
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
-        function startDraw(e) { e.preventDefault(); drawing = true; if (flagName === 'A') sigSignedA = true; else sigSignedB = true; ctx.beginPath(); let p = getPos(e); ctx.moveTo(p.x, p.y); }
-        function draw(e) { if (!drawing) return; e.preventDefault(); let p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle = "#000"; ctx.lineWidth = 2.5; ctx.stroke(); }
-        function stopDraw(e) { if (drawing) { if (e) e.preventDefault(); drawing = false; } }
+        function startDraw(e) {
+            e.preventDefault();
+            drawing = true;
+            if (flagName === 'A') sigSignedA = true; else sigSignedB = true;
+            ctx.beginPath();
+            let p = getPos(e);
+            ctx.moveTo(p.x, p.y);
+        }
+        function draw(e) {
+            if (!drawing) return;
+            e.preventDefault();
+            let p = getPos(e);
+            ctx.lineTo(p.x, p.y);
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+        }
+        function stopDraw(e) {
+            if (drawing) {
+                if (e) e.preventDefault();
+                drawing = false;
+                saveDraftToLocalStorage();
+            }
+        }
 
         canvas.addEventListener('pointerdown', startDraw, false);
         canvas.addEventListener('pointermove', draw, false);
@@ -1775,15 +2023,112 @@
         if (!canvas) return;
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
         if (id === 'sigCanvasA') sigSignedA = false; else sigSignedB = false;
+        saveDraftToLocalStorage();
     }
 
-    function validateAndFinish() {
-        const alertBox = document.getElementById('validationAlert');
-        alertBox.style.display = 'none'; alertBox.innerHTML = '';
+    function buildPdfOptions() {
+        return {
+            margin: 20,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+    }
 
-        const endPunkteVal = document.getElementById('endPunkte').value.split(':').map(x => parseInt(x.trim()));
+    function restoreViewAfterPdf() {
+        const element = document.getElementById('pdfContent');
+        element.classList.remove('pdf-export-mode');
+        element.style.position = '';
+        element.style.left = '';
+        element.style.top = '';
+        element.style.zIndex = '';
+        element.style.background = '';
+
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.style.display = '';
+        });
+        document.querySelectorAll('.hide-on-pdf').forEach(el => {
+            el.style.display = '';
+        });
+        ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+            const field = document.getElementById(id);
+            if (field) field.closest('.form-group').style.display = '';
+        });
+        applyQttrUIVisibility();
+        switchTab('tab3');
+    }
+
+    function prepareElementForPdf() {
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.style.display = 'block';
+        });
+        document.querySelectorAll('.hide-on-pdf').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        if (qttrVorgabeActive || document.getElementById('fixedVorgabeTeam').value === 'Keine') {
+            document.getElementById('manualVorgabeCard').style.display = 'none';
+        }
+
+        ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
+            const field = document.getElementById(id);
+            if (field && !getEffectivePlayerValue(id)) {
+                field.closest('.form-group').style.display = 'none';
+            }
+        });
+
+        const element = document.getElementById('pdfContent');
+        element.classList.add('pdf-export-mode');
+        element.style.position = 'fixed';
+        element.style.left = '0';
+        element.style.top = '0';
+        element.style.zIndex = '9999';
+        element.style.background = '#ffffff';
+
+        void element.offsetHeight;
+        return element;
+    }
+
+    async function generatePdfBlob() {
+        const element = prepareElementForPdf();
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        try {
+            const opts = {
+                ...buildPdfOptions(),
+                html2canvas: {
+                    ...buildPdfOptions().html2canvas,
+                    width: element.scrollWidth,
+                    height: element.scrollHeight
+                }
+            };
+            const worker = html2pdf().set(opts).from(element).toPdf();
+            const pdfDoc = await worker.get('pdf');
+            return pdfDoc.output('blob');
+        } finally {
+            restoreViewAfterPdf();
+        }
+    }
+
+    function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result || '');
+            reader.onerror = () => reject(new Error('Fehler beim Lesen des PDF-Blobs'));
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function validateAndFinish() {
+        const alertBox = document.getElementById('validationAlert');
+        alertBox.style.display = 'none';
+        alertBox.innerHTML = '';
+        saveDraftToLocalStorage();
+
+        const endPunkteVal = document.getElementById('endPunkte').value.split(':').map(x => parseInt(x.trim(), 10));
         let errors = [];
-        if (endPunkteVal[0] < 7 && endPunkteVal[1] < 7) errors.push("Eine Mannschaft muss mindestens 7 Punkte erreicht haben.");
+        if ((isNaN(endPunkteVal[0]) || endPunkteVal[0] < 7) && (isNaN(endPunkteVal[1]) || endPunkteVal[1] < 7)) {
+            errors.push("Eine Mannschaft muss mindestens 7 Punkte erreicht haben.");
+        }
         if (!document.getElementById('spielende').value.trim()) errors.push("Bitte Uhrzeit bei 'Spielende' eintragen.");
         if (!sigSignedA) errors.push("Unterschrift Heimmannschaft fehlt.");
         if (!sigSignedB) errors.push("Unterschrift Gastmannschaft fehlt.");
@@ -1791,106 +2136,37 @@
         if (errors.length > 0) {
             alertBox.innerHTML = "<strong>Abschluss nicht möglich:</strong><br>• " + errors.join("<br>• ");
             alertBox.style.display = 'block';
-        } else {
-            generatePdfBlobAndSave();
+            return;
         }
+
+        const fingerprint = getGameFingerprint();
+        if (uploadedFingerprint && uploadedFingerprint === fingerprint) {
+            alert("Dieser Spielbericht wurde bereits online im Archiv gespeichert.");
+            return;
+        }
+
+        let pdfDataUri = '';
+        try {
+            const pdfBlob = await generatePdfBlob();
+            if (pdfBlob && pdfBlob.size > 0) {
+                pdfDataUri = await blobToDataUrl(pdfBlob);
+            }
+        } catch (err) {
+            console.error("Fehler beim Erzeugen der PDF-Daten für das Archiv:", err);
+        }
+
+        await saveFinishedGameToArchive(pdfDataUri, fingerprint);
     }
 
-    function generatePdfBlobAndSave() {
-        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'block');
-        document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = 'none');
-        
-        if (qttrVorgabeActive || document.getElementById('fixedVorgabeTeam').value === 'Keine') {
-            document.getElementById('manualVorgabeCard').style.display = 'none';
-        }
-
-        ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
-            const field = document.getElementById(id);
-            if (field && !getEffectivePlayerValue(id)) {
-                field.closest('.form-group').style.display = 'none';
-            }
-        });
-
-        const element = document.getElementById('pdfContent');
-        element.classList.add('pdf-export-mode');
-
-        const opt = {
-            margin: 20,
-            filename: `Spielbericht_${document.getElementById('datum').value || 'Pokal'}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        html2pdf().set(opt).from(element).outputPdf('blob').then(async (pdfBlob) => {
-            let blobUrl = URL.createObjectURL(pdfBlob);
-
-            const reader = new FileReader();
-            reader.readAsDataURL(pdfBlob);
-            reader.onloadend = async function() {
-                await saveFinishedGameToArchive(reader.result);
-            }
-
-            element.classList.remove('pdf-export-mode');
-            document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
-            ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
-                const field = document.getElementById(id);
-                if (field) field.closest('.form-group').style.display = '';
-            });
-            applyQttrUIVisibility();
-            switchTab('tab3');
-
-            isFormCompleted = true;
-            document.getElementById('btnAbschliessen').style.display = 'none';
-            document.getElementById('btnPdfPrint').style.display = 'inline-block';
-            
-            window.open(blobUrl, '_blank');
+    function openPdfReportView() {
+        saveDraftToLocalStorage();
+        generatePdfBlob().then((pdfBlob) => {
+            const pdfViewBlob = new Blob([pdfBlob], { type: 'application/pdf' });
+            const pdfUrl = URL.createObjectURL(pdfViewBlob);
+            window.open(pdfUrl, '_blank', 'noopener');
         }).catch(err => {
             console.error(err);
-            element.classList.remove('pdf-export-mode');
-            document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
-            applyQttrUIVisibility();
-            switchTab('tab3');
-            alert("Fehler beim Generieren des PDFs.");
-        });
-    }
-
-    function exportToPDF() {
-        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'block');
-        document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = 'none');
-        
-        if (qttrVorgabeActive || document.getElementById('fixedVorgabeTeam').value === 'Keine') {
-            document.getElementById('manualVorgabeCard').style.display = 'none';
-        }
-
-        ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
-            const field = document.getElementById(id);
-            if (field && !getEffectivePlayerValue(id)) {
-                field.closest('.form-group').style.display = 'none';
-            }
-        });
-
-        const element = document.getElementById('pdfContent');
-        element.classList.add('pdf-export-mode');
-
-        const opt = {
-            margin: 20,
-            filename: `Spielbericht_${document.getElementById('datum').value || 'Pokal'}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        html2pdf().set(opt).from(element).outputPdf('blob').then((pdfBlob) => {
-            window.open(URL.createObjectURL(pdfBlob), '_blank');
-            element.classList.remove('pdf-export-mode');
-            document.querySelectorAll('.hide-on-pdf').forEach(el => el.style.display = '');
-            ['spielerA_D1', 'spielerA_D2', 'spielerB_D1', 'spielerB_D2'].forEach(id => {
-                const field = document.getElementById(id);
-                if (field) field.closest('.form-group').style.display = '';
-            });
-            applyQttrUIVisibility();
-            switchTab('tab3');
+            alert("Fehler beim Öffnen des PDF Reports.");
         });
     }
 
@@ -1913,6 +2189,7 @@
             localStorage.setItem('wesermarsch_pokal_roster', JSON.stringify(roster));
             updateAllDropdowns();
             renderMatchTable();
+            restoreDraftFromLocalStorage();
         }).catch(() => {});
     }
 
@@ -2146,23 +2423,48 @@
             });
         });
 
-        loadExcelFromGitHub();
         updateAllDropdowns();
         renderMatchTable();
+        restoreDraftFromLocalStorage();
+        loadExcelFromGitHub();
+
+        ['datum', 'uhrzeit', 'spielende'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', saveDraftToLocalStorage);
+                el.addEventListener('change', saveDraftToLocalStorage);
+            }
+        });
 
         document.getElementById('fixedVorgabeTeam').addEventListener('change', () => {
             checkAdminLockOnInput();
             renderMatchTable();
+            saveDraftToLocalStorage();
         });
         document.getElementById('fixedVorgabeValue').addEventListener('input', () => {
             checkAdminLockOnInput();
             renderMatchTable();
+            saveDraftToLocalStorage();
         });
 
-        document.getElementById('spielklasse').addEventListener('change', () => { updateAllDropdowns(); renderMatchTable(); });
+        document.getElementById('spielklasse').addEventListener('change', () => {
+            updateAllDropdowns();
+            renderMatchTable();
+            saveDraftToLocalStorage();
+        });
         
-        document.getElementById('heimName').addEventListener('change', () => { updateClubDropdowns(); updatePlayerDropdowns(); renderMatchTable(); });
-        document.getElementById('gastName').addEventListener('change', () => { updateClubDropdowns(); updatePlayerDropdowns(); renderMatchTable(); });
+        document.getElementById('heimName').addEventListener('change', () => {
+            updateClubDropdowns();
+            updatePlayerDropdowns();
+            renderMatchTable();
+            saveDraftToLocalStorage();
+        });
+        document.getElementById('gastName').addEventListener('change', () => {
+            updateClubDropdowns();
+            updatePlayerDropdowns();
+            renderMatchTable();
+            saveDraftToLocalStorage();
+        });
 
         [
             'spielerA_A', 'spielerA_B', 'spielerA_C', 'spielerA_D1', 'spielerA_D2', 'doppelLetterA1', 'doppelLetterA2',
@@ -2175,6 +2477,7 @@
                     toggleManualInput(e.target.id);
                     updatePlayerDropdowns();
                     renderMatchTable();
+                    saveDraftToLocalStorage();
                 });
             }
         });
@@ -2182,6 +2485,7 @@
         document.querySelectorAll('.manual-player-input').forEach(input => {
             input.addEventListener('input', () => {
                 renderMatchTable();
+                saveDraftToLocalStorage();
             });
         });
 
@@ -2196,12 +2500,16 @@
         document.getElementById('btnAdminLogin').addEventListener('click', openAdminModal);
         document.getElementById('btnSettings').addEventListener('click', openSettingsModal);
         document.getElementById('btnResetGame').addEventListener('click', () => {
-            if (confirm('Spiel zurücksetzen?')) {
+            if (confirm('Spiel zurücksetzen? Alle gespeicherten Eingaben werden gelöscht.')) {
+                uploadedFingerprint = '';
+                localStorage.removeItem(DRAFT_STORAGE_KEY);
                 document.getElementById('pokalForm').reset();
                 document.querySelectorAll('.manual-player-input').forEach(input => {
                     input.value = '';
                     input.style.display = 'none';
                 });
+                clearCanvas('sigCanvasA');
+                clearCanvas('sigCanvasB');
                 applyQttrUIVisibility();
                 updateAllDropdowns();
                 renderMatchTable();
@@ -2215,7 +2523,7 @@
         document.getElementById('clearCanvasA').addEventListener('click', () => clearCanvas('sigCanvasA'));
         document.getElementById('clearCanvasB').addEventListener('click', () => clearCanvas('sigCanvasB'));
         document.getElementById('btnAbschliessen').addEventListener('click', validateAndFinish);
-        document.getElementById('btnPdfPrint').addEventListener('click', exportToPDF);
+        document.getElementById('btnPdfPrint').addEventListener('click', openPdfReportView);
     });
 </script>
 </body>
