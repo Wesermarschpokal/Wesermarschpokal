@@ -1,0 +1,215 @@
+{
+  "id": "spiel_1795329330699",
+  "datum": "2026-11-22",
+  "uhrzeit": "07:15",
+  "heimName": "Elsflether TB 3",
+  "gastName": "Bardenflether TB 1",
+  "spielklasse": "Erwachsene",
+  "baelle": "270 : 153",
+  "saetze": "21 : 1",
+  "punkte": "7 : 0",
+  "aufstellung": {
+    "heim": {
+      "A": "Brandt, Simon",
+      "B": "Buse, Heinz-Hermann",
+      "C": "Kleen, Bernd"
+    },
+    "gast": {
+      "X": "Pentz, Uwe",
+      "Y": "Saathoff, Benjamin",
+      "Z": "Wiards, Jörn"
+    }
+  },
+  "matches": [
+    {
+      "nr": 1,
+      "type": "doppel",
+      "playerA": "Brandt, Simon / Buse, Heinz-Hermann",
+      "playerB": "Pentz, Uwe / Saathoff, Benjamin",
+      "saetzeA": 3,
+      "saetzeB": 1,
+      "punkteA": 1,
+      "punkteB": 0,
+      "finished": true,
+      "sets": [
+        "11:5",
+        "11:6",
+        "6:11",
+        "11:6"
+      ]
+    },
+    {
+      "nr": 2,
+      "type": "einzel",
+      "playerA": "Kleen, Bernd",
+      "playerB": "Wiards, Jörn",
+      "saetzeA": 3,
+      "saetzeB": 0,
+      "punkteA": 1,
+      "punkteB": 0,
+      "finished": true,
+      "sets": [
+        "11:5",
+        "11:6",
+        "11:6"
+      ]
+    },
+    {
+      "nr": 3,
+      "type": "doppel",
+      "playerA": "Buse, Heinz-Hermann / Kleen, Bernd",
+      "playerB": "Saathoff, Benjamin / Wiards, Jörn",
+      "saetzeA": 3,
+      "saetzeB": 0,
+      "punkteA": 1,
+      "punkteB": 0,
+      "finished": true,
+      "sets": [
+        "11:5",
+        "11:6",
+        "11:6"
+      ]
+    },
+    {
+      "nr": 4,
+      "type": "einzel",
+      "playerA": "Brandt, Simon",
+      "playerB": "Pentz, Uwe",
+      "saetzeA": 3,
+      "saetzeB": 0,
+      "punkteA": 1,
+      "punkteB": 0,
+      "finished": true,
+      "sets": [
+        "11:5",
+        "11:6",
+        "11:6"
+      ]
+    },
+    {
+      "nr": 5,
+      "type": "doppel",
+      "playerA": "Brandt, Simon / Kleen, Bernd",
+      "playerB": "Pentz, Uwe / Wiards, Jörn",
+      "saetzeA": 3,
+      "saetzeB": 0,
+      "punkteA": 1,
+      "punkteB": 0,
+      "finished": true,
+      "sets": [
+        "11:6",
+        "11:6",
+        "11:6"
+      ]
+    },
+    {
+      "nr": 6,
+      "type": "einzel",
+      "playerA": "Buse, Heinz-Hermann",
+      "playerB": "Saathoff, Benjamin",
+      "saetzeA": 3,
+      "saetzeB": 0,
+      "punkteA": 1,
+      "punkteB": 0,
+      "finished": true,
+      "sets": [
+        "11:5",
+        "11:6",
+        "11:7"
+      ]
+    },
+    {
+      "nr": 7,
+      "type": "einzel",
+      "playerA": "Brandt, Simon",
+      "playerB": "Wiards, Jörn",
+      "saetzeA": 3,
+      "saetzeB": 0,
+      "punkteA": 1,
+      "punkteB": 0,
+      "finished": true,
+      "sets": [
+        "11:6",
+        "11:6",
+        "11:8"
+      ]
+    },
+    {
+      "nr": 8,
+      "type": "einzel",
+      "playerA": "Kleen, Bernd",
+      "playerB": "Pentz, Uwe",
+      "saetzeA": 3,
+      "saetzeB": 0,
+      "punkteA": 1,
+      "punkteB": 0,
+      "finished": true,
+      "sets": [
+        "11:5",
+        "11:6",
+        "11:7"
+      ]
+    },
+    {
+      "nr": 9,
+      "type": "einzel",
+      "playerA": "Buse, Heinz-Hermann",
+      "playerB": "Wiards, Jörn",
+      "saetzeA": 0,
+      "saetzeB": 0,
+      "punkteA": 0,
+      "punkteB": 0,
+      "finished": false,
+      "sets": []
+    },
+    {
+      "nr": 10,
+      "type": "einzel",
+      "playerA": "Kleen, Bernd",
+      "playerB": "Saathoff, Benjamin",
+      "saetzeA": 0,
+      "saetzeB": 0,
+      "punkteA": 0,
+      "punkteB": 0,
+      "finished": false,
+      "sets": []
+    },
+    {
+      "nr": 11,
+      "type": "einzel",
+      "playerA": "Buse, Heinz-Hermann",
+      "playerB": "Pentz, Uwe",
+      "saetzeA": 0,
+      "saetzeB": 0,
+      "punkteA": 0,
+      "punkteB": 0,
+      "finished": false,
+      "sets": []
+    },
+    {
+      "nr": 12,
+      "type": "einzel",
+      "playerA": "Brandt, Simon",
+      "playerB": "Saathoff, Benjamin",
+      "saetzeA": 0,
+      "saetzeB": 0,
+      "punkteA": 0,
+      "punkteB": 0,
+      "finished": false,
+      "sets": []
+    },
+    {
+      "nr": 13,
+      "type": "frei",
+      "playerA": "Brandt, Simon / Buse, Heinz-Hermann",
+      "playerB": "Pentz, Uwe / Saathoff, Benjamin",
+      "saetzeA": 0,
+      "saetzeB": 0,
+      "punkteA": 0,
+      "punkteB": 0,
+      "finished": false,
+      "sets": []
+    }
+  ],
+  "timestamp": 1795329330699
+}
