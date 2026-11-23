@@ -286,6 +286,7 @@
 
     <div class="filter-controls">
         <input type="text" id="searchInput" placeholder="Suche nach Verein, Datum oder Spielklasse...">
+        <select id="saisonFilter" title="Spielzeit / Saison"></select>
         <select id="klasseFilter">
             <option value="">Alle Spielklassen</option>
             <option value="Erwachsene">Erwachsene</option>
@@ -343,10 +344,70 @@
     }
 
     /**
-     * Wandelt Spieldatum (YYYY-MM-DD) und optional Uhrzeit (HH:MM) in einen numerischen
-     * Zeitstempel für die chronologische Sortierung nach Spieldatum um.
-     * Gibt null zurück, wenn kein gültiges Spieldatum vorhanden ist.
+     * Ermittelt die Saison im Format "JJJJ/(JJJJ+1)" anhand des Spieldatums.
+     * Zeitraum einer Saison: 01.09.JJJJ bis 31.08.(JJJJ+1).
      */
+    function getSeasonFromDateStr(dateStr) {
+        const raw = (dateStr || '').trim();
+        let year = null;
+        let month = null;
+
+        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoMatch) {
+            year = parseInt(isoMatch[1], 10);
+            month = parseInt(isoMatch[2], 10);
+        } else {
+            const deMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+            if (deMatch) {
+                month = parseInt(deMatch[2], 10);
+                year = parseInt(deMatch[3], 10);
+            }
+        }
+
+        if (!year || !month || month < 1 || month > 12) {
+            return '';
+        }
+
+        const startYear = month >= 9 ? year : year - 1;
+        return `${startYear}/${startYear + 1}`;
+    }
+
+    function getSeasonStartYear(seasonStr) {
+        const match = String(seasonStr || '').match(/^(\d{4})\/\d{4}$/);
+        return match ? parseInt(match[1], 10) : -1;
+    }
+
+    function populateSeasonDropdown() {
+        const select = document.getElementById('saisonFilter');
+        if (!select) return;
+        const prevVal = select.value;
+
+        const seasonSet = new Set();
+        allGames.forEach(g => {
+            const season = getSeasonFromDateStr(g?.datum);
+            if (season) seasonSet.add(season);
+        });
+
+        const sortedSeasons = [...seasonSet].sort((a, b) => getSeasonStartYear(b) - getSeasonStartYear(a));
+
+        select.innerHTML = '';
+        if (sortedSeasons.length === 0) {
+            select.add(new Option('Keine Spielzeit vorhanden', ''));
+            select.value = '';
+            return;
+        }
+
+        sortedSeasons.forEach(season => {
+            select.add(new Option(season, season));
+        });
+
+        if (prevVal && sortedSeasons.includes(prevVal)) {
+            select.value = prevVal;
+        } else {
+            select.value = sortedSeasons[0];
+        }
+    }
+
     function getMatchDateSortValue(game) {
         const rawDate = (game && game.datum ? String(game.datum) : '').trim();
         const dateMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -384,7 +445,6 @@
             const timeA = getMatchDateSortValue(a);
             const timeB = getMatchDateSortValue(b);
 
-            // Spiele ohne Spieldatum immer ans Ende stellen
             if (timeA === null && timeB === null) {
                 return ((b.timestamp || 0) - (a.timestamp || 0));
             }
@@ -395,7 +455,6 @@
                 return (timeA - timeB) * direction;
             }
 
-            // Bei identischem Spieldatum/Uhrzeit sekundär nach timestamp sortieren
             return ((b.timestamp || 0) - (a.timestamp || 0));
         });
     }
@@ -422,6 +481,7 @@
             if (dirRes.status === 404) {
                 allGames = [];
                 setStatus('', '');
+                populateSeasonDropdown();
                 renderGames();
                 return;
             }
@@ -456,6 +516,7 @@
 
             allGames = loaded.filter(Boolean);
             setStatus('', '');
+            populateSeasonDropdown();
             renderGames();
         } catch (err) {
             console.error(err);
@@ -551,22 +612,26 @@
     function renderGames() {
         const tbody = document.getElementById('gamesTableBody');
         const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+        const selectedSeason = document.getElementById('saisonFilter').value;
         const selectedKlasse = document.getElementById('klasseFilter').value;
         const sortOrder = document.getElementById('sortOrderSelect').value;
 
         const sorted = sortGamesByMatchDate(allGames, sortOrder);
 
         const filtered = sorted.filter(g => {
+            const gameSeason = getSeasonFromDateStr(g?.datum);
+            const matchesSeason = !selectedSeason || gameSeason === selectedSeason;
             const matchesKlasse = !selectedKlasse || (g.spielklasse || '') === selectedKlasse;
             const haystack = [
                 g.datum || '',
                 formatGermanDate(g.datum),
+                gameSeason,
                 g.spielklasse || '',
                 g.heimName || '',
                 g.gastName || ''
             ].join(' ').toLowerCase();
             const matchesSearch = !searchTerm || haystack.includes(searchTerm);
-            return matchesKlasse && matchesSearch;
+            return matchesSeason && matchesKlasse && matchesSearch;
         });
 
         if (filtered.length === 0) {
@@ -639,6 +704,7 @@
 
         document.getElementById('btnRefresh').addEventListener('click', loadGamesFromGitHub);
         document.getElementById('searchInput').addEventListener('input', renderGames);
+        document.getElementById('saisonFilter').addEventListener('change', renderGames);
         document.getElementById('klasseFilter').addEventListener('change', renderGames);
         document.getElementById('sortOrderSelect').addEventListener('change', renderGames);
 
