@@ -175,7 +175,7 @@
 
         @media (min-width: 700px) {
             .filter-grid {
-                grid-template-columns: 2fr 1fr 1fr;
+                grid-template-columns: 2fr 1fr 1fr 1fr;
             }
         }
 
@@ -346,6 +346,10 @@
             </select>
         </div>
         <div class="filter-group">
+            <label for="saisonFilter">Spielzeit</label>
+            <select id="saisonFilter"></select>
+        </div>
+        <div class="filter-group">
             <label for="klasseFilter">Spielklasse</label>
             <select id="klasseFilter">
                 <option value="">Alle Spielklassen</option>
@@ -398,6 +402,71 @@
         }
         box.className = `status-box ${type}`;
         box.textContent = message;
+    }
+
+    /**
+     * Ermittelt die Saison im Format "JJJJ/(JJJJ+1)" anhand des Spieldatums.
+     * Zeitraum einer Saison: 01.09.JJJJ bis 31.08.(JJJJ+1).
+     */
+    function getSeasonFromDateStr(dateStr) {
+        const raw = (dateStr || '').trim();
+        let year = null;
+        let month = null;
+
+        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoMatch) {
+            year = parseInt(isoMatch[1], 10);
+            month = parseInt(isoMatch[2], 10);
+        } else {
+            const deMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+            if (deMatch) {
+                month = parseInt(deMatch[2], 10);
+                year = parseInt(deMatch[3], 10);
+            }
+        }
+
+        if (!year || !month || month < 1 || month > 12) {
+            return '';
+        }
+
+        const startYear = month >= 9 ? year : year - 1;
+        return `${startYear}/${startYear + 1}`;
+    }
+
+    function getSeasonStartYear(seasonStr) {
+        const match = String(seasonStr || '').match(/^(\d{4})\/\d{4}$/);
+        return match ? parseInt(match[1], 10) : -1;
+    }
+
+    function populateSeasonDropdown() {
+        const select = document.getElementById('saisonFilter');
+        if (!select) return;
+        const prevVal = select.value;
+
+        const seasonSet = new Set();
+        allGames.forEach(g => {
+            const season = getSeasonFromDateStr(g?.datum);
+            if (season) seasonSet.add(season);
+        });
+
+        const sortedSeasons = [...seasonSet].sort((a, b) => getSeasonStartYear(b) - getSeasonStartYear(a));
+
+        select.innerHTML = '';
+        if (sortedSeasons.length === 0) {
+            select.add(new Option('Keine Spielzeit vorhanden', ''));
+            select.value = '';
+            return;
+        }
+
+        sortedSeasons.forEach(season => {
+            select.add(new Option(season, season));
+        });
+
+        if (prevVal && sortedSeasons.includes(prevVal)) {
+            select.value = prevVal;
+        } else {
+            select.value = sortedSeasons[0];
+        }
     }
 
     function decodeBase64Utf8(base64Str) {
@@ -460,10 +529,6 @@
         return { saetzeA, saetzeB };
     }
 
-    /**
-     * Eine Partie fließt nur dann ein, wenn sie tatsächlich beendet/gespielt wurde
-     * (3 gewonnene Sätze bzw. finished === true mit klarem Sieger).
-     */
     function isPlayedMatch(match) {
         if (!match) return false;
         const { saetzeA, saetzeB } = getMatchSets(match);
@@ -509,11 +574,18 @@
         return parts.includes(playerKey);
     }
 
-    function collectAllPlayers(games, selectedKlasse) {
+    function matchesFilters(game, selectedSeason, selectedKlasse) {
+        const gameSeason = getSeasonFromDateStr(game?.datum);
+        if (selectedSeason && gameSeason !== selectedSeason) return false;
+        if (selectedKlasse && (game.spielklasse || '') !== selectedKlasse) return false;
+        return true;
+    }
+
+    function collectAllPlayers(games, selectedSeason, selectedKlasse) {
         const map = new Map();
 
         games.forEach(game => {
-            if (selectedKlasse && (game.spielklasse || '') !== selectedKlasse) return;
+            if (!matchesFilters(game, selectedSeason, selectedKlasse)) return;
 
             if (Array.isArray(game.matches)) {
                 game.matches.forEach(m => {
@@ -538,10 +610,11 @@
 
     function populatePlayerDropdown() {
         const select = document.getElementById('playerFilter');
+        const selectedSeason = document.getElementById('saisonFilter').value;
         const selectedKlasse = document.getElementById('klasseFilter').value;
         const prevVal = select.value;
 
-        const players = collectAllPlayers(allGames, selectedKlasse);
+        const players = collectAllPlayers(allGames, selectedSeason, selectedKlasse);
         select.innerHTML = '<option value="">Alle Spieler (Bilanzübersicht)</option>';
 
         players.forEach(p => {
@@ -568,6 +641,7 @@
             if (dirRes.status === 404) {
                 allGames = [];
                 setStatus('', '');
+                populateSeasonDropdown();
                 populatePlayerDropdown();
                 renderStats();
                 return;
@@ -611,6 +685,7 @@
                 });
 
             setStatus('', '');
+            populateSeasonDropdown();
             populatePlayerDropdown();
             renderStats();
         } catch (err) {
@@ -620,7 +695,16 @@
         }
     }
 
-    function renderOverviewTable(selectedKlasse, mode) {
+    function buildFilterSummary(selectedSeason, selectedKlasse, mode) {
+        const parts = [];
+        parts.push(selectedSeason ? `Spielzeit: ${selectedSeason}` : 'Keine Spielzeit gewählt');
+        if (selectedKlasse) parts.push(`Spielklasse: ${selectedKlasse}`);
+        parts.push(mode === 'doppel' ? 'Doppel' : 'Einzel');
+        parts.push('Nur gespielte Partien');
+        return parts.join(' · ');
+    }
+
+    function renderOverviewTable(selectedSeason, selectedKlasse, mode) {
         const thead = document.getElementById('statsTableHead');
         const tbody = document.getElementById('statsTableBody');
         const heading = document.getElementById('tableHeading');
@@ -628,9 +712,7 @@
 
         const isDouble = mode === 'doppel';
         heading.textContent = isDouble ? 'Doppelpaarungen – Bilanz' : 'Spieler – Bilanz';
-        subheading.textContent = selectedKlasse
-            ? `Spielklasse: ${selectedKlasse} · ${isDouble ? 'Zusammengefasste Paarungen' : 'Einzelbilanz'} · Nur gespielte Partien`
-            : `Alle Spielklassen · ${isDouble ? 'Zusammengefasste Paarungen' : 'Einzelbilanz'} · Nur gespielte Partien`;
+        subheading.textContent = buildFilterSummary(selectedSeason, selectedKlasse, mode);
 
         thead.innerHTML = `
             <tr>
@@ -657,7 +739,7 @@
         }
 
         allGames.forEach(game => {
-            if (selectedKlasse && (game.spielklasse || '') !== selectedKlasse) return;
+            if (!matchesFilters(game, selectedSeason, selectedKlasse)) return;
             if (!Array.isArray(game.matches)) return;
 
             game.matches.forEach(m => {
@@ -725,7 +807,7 @@
         });
     }
 
-    function renderPlayerMatchesTable(playerKey, selectedKlasse, mode) {
+    function renderPlayerMatchesTable(playerKey, selectedSeason, selectedKlasse, mode) {
         const thead = document.getElementById('statsTableHead');
         const tbody = document.getElementById('statsTableBody');
         const heading = document.getElementById('tableHeading');
@@ -736,7 +818,7 @@
         const isDouble = mode === 'doppel';
 
         heading.textContent = `Gespielte Partien von ${playerLabel}`;
-        subheading.textContent = `${selectedKlasse ? 'Spielklasse: ' + selectedKlasse + ' · ' : 'Alle Spielklassen · '}${isDouble ? 'Doppel' : 'Einzel'} · Nur gespielte Partien`;
+        subheading.textContent = buildFilterSummary(selectedSeason, selectedKlasse, mode);
 
         thead.innerHTML = `
             <tr>
@@ -753,7 +835,7 @@
         const playerMatches = [];
 
         allGames.forEach(game => {
-            if (selectedKlasse && (game.spielklasse || '') !== selectedKlasse) return;
+            if (!matchesFilters(game, selectedSeason, selectedKlasse)) return;
             if (!Array.isArray(game.matches)) return;
 
             game.matches.forEach(m => {
@@ -846,13 +928,14 @@
 
     function renderStats() {
         const playerKey = document.getElementById('playerFilter').value;
+        const selectedSeason = document.getElementById('saisonFilter').value;
         const selectedKlasse = document.getElementById('klasseFilter').value;
         const mode = document.getElementById('modeFilter').value;
 
         if (playerKey) {
-            renderPlayerMatchesTable(playerKey, selectedKlasse, mode);
+            renderPlayerMatchesTable(playerKey, selectedSeason, selectedKlasse, mode);
         } else {
-            renderOverviewTable(selectedKlasse, mode);
+            renderOverviewTable(selectedSeason, selectedKlasse, mode);
         }
     }
 
@@ -872,6 +955,10 @@
         }
 
         document.getElementById('btnRefresh').addEventListener('click', loadGamesFromGitHub);
+        document.getElementById('saisonFilter').addEventListener('change', () => {
+            populatePlayerDropdown();
+            renderStats();
+        });
         document.getElementById('klasseFilter').addEventListener('change', () => {
             populatePlayerDropdown();
             renderStats();
