@@ -40,7 +40,7 @@
         /* Burger Menu Navigation */
         .burger-menu-container {
             position: absolute;
-            top: 24px;
+            top: 45px;
             left: 20px;
             z-index: 100;
         }
@@ -101,26 +101,22 @@
             color: var(--primary);
         }
 
-        .top-bar {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
+        .header-print {
             border-bottom: 2px solid var(--primary);
-            padding-bottom: 12px;
-            margin-bottom: 20px;
-            padding-left: 42px;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            text-align: center;
         }
 
-        .title-group h1 {
-            margin: 0;
+        .header-title h1 {
             color: var(--primary);
-            font-size: 1.35rem;
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
         }
 
-        .title-group p {
-            margin: 3px 0 0 0;
+        .header-title p {
+            margin: 2px 0 0 0;
             color: var(--text-muted);
             font-size: 0.85rem;
         }
@@ -128,8 +124,10 @@
         .actions-bar {
             display: flex;
             flex-wrap: wrap;
+            justify-content: flex-end;
             gap: 8px;
             align-items: center;
+            margin-bottom: 14px;
         }
 
         .btn {
@@ -329,14 +327,15 @@
         </div>
     </div>
 
-    <div class="top-bar">
-        <div class="title-group">
-            <h1>Statistik – Wesermarschpokal</h1>
-            <p>Auswertung gespielter Partien (Spiel- und Satzbilanzen)</p>
+    <div class="header-print">
+        <div class="header-title">
+            <h1>Tischtennis Kreisverband Wesermarsch e.V.</h1>
+            <p>Auswertung aller gespielten Partien</p>
         </div>
-        <div class="actions-bar">
-            <button type="button" class="btn btn-secondary btn-sm" id="btnRefresh">🔄 Aktualisieren</button>
-        </div>
+    </div>
+
+    <div class="actions-bar">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnRefresh">🔄 Aktualisieren</button>
     </div>
 
     <div class="filter-grid">
