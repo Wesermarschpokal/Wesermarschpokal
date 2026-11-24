@@ -15,6 +15,9 @@
             --border-color: #cbd5e1;
             --success-bg: #dcfce7;
             --success-text: #166534;
+            --warning-bg: #fef9c3;
+            --warning-text: #854d0e;
+            --warning-border: #fde047;
             --danger-bg: #fee2e2;
             --danger-text: #991b1b;
         }
@@ -185,7 +188,7 @@
 
         .filter-controls input {
             flex: 1;
-            min-width: 200px;
+            min-width: 190px;
         }
 
         .status-box {
@@ -201,6 +204,13 @@
             background: #e0f2fe;
             color: #075985;
             border: 1px solid #7dd3fc;
+        }
+
+        .status-box.warning {
+            display: block;
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border: 1px solid var(--warning-border);
         }
 
         .status-box.error {
@@ -287,6 +297,9 @@
     <div class="filter-controls">
         <input type="text" id="searchInput" placeholder="Suche nach Verein, Datum oder Spielklasse...">
         <select id="saisonFilter" title="Spielzeit / Saison"></select>
+        <select id="vereinFilter" title="Verein / Mannschaft">
+            <option value="">Alle Vereine</option>
+        </select>
         <select id="klasseFilter">
             <option value="">Alle Spielklassen</option>
             <option value="Erwachsene">Erwachsene</option>
@@ -343,10 +356,6 @@
         box.textContent = message;
     }
 
-    /**
-     * Ermittelt die Saison im Format "JJJJ/(JJJJ+1)" anhand des Spieldatums.
-     * Zeitraum einer Saison: 01.09.JJJJ bis 31.08.(JJJJ+1).
-     */
     function getSeasonFromDateStr(dateStr) {
         const raw = (dateStr || '').trim();
         let year = null;
@@ -405,6 +414,42 @@
             select.value = prevVal;
         } else {
             select.value = sortedSeasons[0];
+        }
+    }
+
+    function populateClubDropdown() {
+        const select = document.getElementById('vereinFilter');
+        if (!select) return;
+        const prevVal = select.value;
+        const selectedSeason = document.getElementById('saisonFilter').value;
+        const selectedKlasse = document.getElementById('klasseFilter').value;
+
+        const clubMap = new Map();
+        allGames.forEach(g => {
+            const gameSeason = getSeasonFromDateStr(g?.datum);
+            if (selectedSeason && gameSeason !== selectedSeason) return;
+            if (selectedKlasse && (g.spielklasse || '') !== selectedKlasse) return;
+
+            [g.heimName, g.gastName].forEach(name => {
+                const clean = String(name || '').trim().replace(/\s+/g, ' ');
+                const key = clean.toLowerCase();
+                if (clean && !clubMap.has(key)) {
+                    clubMap.set(key, clean);
+                }
+            });
+        });
+
+        const sortedClubs = [...clubMap.values()].sort((a, b) => a.localeCompare(b, 'de'));
+
+        select.innerHTML = '<option value="">Alle Vereine</option>';
+        sortedClubs.forEach(club => {
+            select.add(new Option(club, club.toLowerCase()));
+        });
+
+        if (prevVal && [...select.options].some(o => o.value === prevVal)) {
+            select.value = prevVal;
+        } else {
+            select.value = '';
         }
     }
 
@@ -482,6 +527,7 @@
                 allGames = [];
                 setStatus('', '');
                 populateSeasonDropdown();
+                populateClubDropdown();
                 renderGames();
                 return;
             }
@@ -495,32 +541,52 @@
                 ? files.filter(f => f.type === 'file' && f.name.toLowerCase().endsWith('.json'))
                 : [];
 
+            let failedFilesCount = 0;
+
             const loaded = await Promise.all(jsonFiles.map(async (file) => {
                 try {
                     const fileRes = await fetch(file.url);
-                    if (!fileRes.ok) return null;
+                    if (!fileRes.ok) {
+                        failedFilesCount++;
+                        return null;
+                    }
                     const fileJson = await fileRes.json();
                     const rawContent = fileJson.content
                         ? decodeBase64Utf8(fileJson.content)
                         : await (await fetch(file.download_url)).text();
                     const parsed = JSON.parse(rawContent);
+                    if (!parsed || typeof parsed !== 'object') {
+                        failedFilesCount++;
+                        return null;
+                    }
                     return {
                         ...parsed,
                         _fileName: file.name
                     };
                 } catch (err) {
+                    failedFilesCount++;
                     console.warn('Fehler beim Lesen einer Spieldatei:', file.name, err);
                     return null;
                 }
             }));
 
             allGames = loaded.filter(Boolean);
-            setStatus('', '');
+
+            if (failedFilesCount > 0) {
+                setStatus(
+                    'warning',
+                    `Hinweis: ${failedFilesCount} Spielbericht${failedFilesCount === 1 ? '' : 'e'} im Archiv konnte${failedFilesCount === 1 ? '' : 'n'} nicht fehlerfrei geladen werden.`
+                );
+            } else {
+                setStatus('', '');
+            }
+
             populateSeasonDropdown();
+            populateClubDropdown();
             renderGames();
         } catch (err) {
             console.error(err);
-            setStatus('error', `Spiele konnten nicht geladen werden: ${err.message}`);
+            setStatus('error', `Fehler beim Laden der Spielberichte: ${err.message}`);
             tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Keine Daten verfügbar.</td></tr>';
         }
     }
@@ -613,6 +679,7 @@
         const tbody = document.getElementById('gamesTableBody');
         const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
         const selectedSeason = document.getElementById('saisonFilter').value;
+        const selectedClub = document.getElementById('vereinFilter').value;
         const selectedKlasse = document.getElementById('klasseFilter').value;
         const sortOrder = document.getElementById('sortOrderSelect').value;
 
@@ -621,6 +688,9 @@
         const filtered = sorted.filter(g => {
             const gameSeason = getSeasonFromDateStr(g?.datum);
             const matchesSeason = !selectedSeason || gameSeason === selectedSeason;
+            const heimKey = String(g.heimName || '').trim().toLowerCase();
+            const gastKey = String(g.gastName || '').trim().toLowerCase();
+            const matchesClub = !selectedClub || heimKey === selectedClub || gastKey === selectedClub;
             const matchesKlasse = !selectedKlasse || (g.spielklasse || '') === selectedKlasse;
             const haystack = [
                 g.datum || '',
@@ -631,7 +701,7 @@
                 g.gastName || ''
             ].join(' ').toLowerCase();
             const matchesSearch = !searchTerm || haystack.includes(searchTerm);
-            return matchesSeason && matchesKlasse && matchesSearch;
+            return matchesSeason && matchesClub && matchesKlasse && matchesSearch;
         });
 
         if (filtered.length === 0) {
@@ -704,8 +774,15 @@
 
         document.getElementById('btnRefresh').addEventListener('click', loadGamesFromGitHub);
         document.getElementById('searchInput').addEventListener('input', renderGames);
-        document.getElementById('saisonFilter').addEventListener('change', renderGames);
-        document.getElementById('klasseFilter').addEventListener('change', renderGames);
+        document.getElementById('saisonFilter').addEventListener('change', () => {
+            populateClubDropdown();
+            renderGames();
+        });
+        document.getElementById('vereinFilter').addEventListener('change', renderGames);
+        document.getElementById('klasseFilter').addEventListener('change', () => {
+            populateClubDropdown();
+            renderGames();
+        });
         document.getElementById('sortOrderSelect').addEventListener('change', renderGames);
 
         loadGamesFromGitHub();
