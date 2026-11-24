@@ -240,6 +240,16 @@
             border: 1px solid #fca5a5;
         }
 
+        .error-file-list {
+            margin: 8px 0 0 0;
+            padding-left: 20px;
+            font-size: 0.84rem;
+        }
+
+        .error-file-list li {
+            margin-bottom: 3px;
+        }
+
         .section-title {
             display: flex;
             justify-content: space-between;
@@ -453,15 +463,30 @@
     let allGames = [];
     let nameAliasMap = new Map();
 
-    function setStatus(type, message) {
+    function setStatus(type, message, details = []) {
         const box = document.getElementById('statusBox');
         if (!message) {
             box.className = 'status-box';
-            box.textContent = '';
+            box.innerHTML = '';
             return;
         }
         box.className = `status-box ${type}`;
-        box.textContent = message;
+        box.innerHTML = '';
+
+        const titleEl = document.createElement('div');
+        titleEl.textContent = message;
+        box.appendChild(titleEl);
+
+        if (Array.isArray(details) && details.length > 0) {
+            const listEl = document.createElement('ul');
+            listEl.className = 'error-file-list';
+            details.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                listEl.appendChild(li);
+            });
+            box.appendChild(listEl);
+        }
     }
 
     function updateBackButtonVisibility(hasSelectedPlayer) {
@@ -470,10 +495,6 @@
         btn.style.display = hasSelectedPlayer ? 'inline-flex' : 'none';
     }
 
-    /**
-     * Extrahiert den reinen Vereinsnamen ohne Mannschaftskennung
-     * (z. B. "Oldenbroker TV 1-6" -> "Oldenbroker TV").
-     */
     function extractClubName(teamName) {
         let name = String(teamName || '').trim().replace(/\s+/g, ' ');
         if (!name) return '';
@@ -589,14 +610,61 @@
         }
     }
 
-    function decodeBase64Utf8(base64Str) {
-        const clean = (base64Str || '').replace(/\n/g, '');
-        const binaryStr = atob(clean);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
+    function getArchiveDownloadUrl(file) {
+        if (file && typeof file.download_url === 'string' && file.download_url.trim()) {
+            return file.download_url.trim();
         }
-        return new TextDecoder('utf-8').decode(bytes);
+        const safeName = encodeURIComponent(file?.name || '');
+        return `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${ARCHIV_PATH}/${safeName}`;
+    }
+
+    async function fetchArchiveFileList() {
+        const dirUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${ARCHIV_PATH}`;
+        const dirRes = await fetch(dirUrl, { cache: 'no-store' });
+
+        if (dirRes.status === 404) {
+            return [];
+        }
+
+        if (dirRes.ok) {
+            const files = await dirRes.json();
+            return Array.isArray(files)
+                ? files.filter(f => f && f.type === 'file' && String(f.name || '').toLowerCase().endsWith('.json'))
+                : [];
+        }
+
+        // Fallback bei Rate-Limit (403/429) oder API-Blockade über Git Trees API
+        if (dirRes.status === 403 || dirRes.status === 429) {
+            for (const branch of ['main', 'master']) {
+                const treeUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/git/trees/${branch}?recursive=1`;
+                const treeRes = await fetch(treeUrl, { cache: 'no-store' });
+                if (treeRes.ok) {
+                    const treeData = await treeRes.json();
+                    const prefix = `${ARCHIV_PATH}/`;
+                    const items = Array.isArray(treeData?.tree)
+                        ? treeData.tree.filter(entry =>
+                            entry &&
+                            entry.type === 'blob' &&
+                            String(entry.path || '').startsWith(prefix) &&
+                            !String(entry.path || '').slice(prefix.length).includes('/') &&
+                            String(entry.path || '').toLowerCase().endsWith('.json')
+                        )
+                        : [];
+
+                    return items.map(entry => {
+                        const fileName = String(entry.path).slice(prefix.length);
+                        return {
+                            name: fileName,
+                            path: entry.path,
+                            download_url: `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${branch}/${ARCHIV_PATH}/${encodeURIComponent(fileName)}`
+                        };
+                    });
+                }
+            }
+            throw new Error(`GitHub-API Limit erreicht (HTTP ${dirRes.status}). Bitte etwas warten oder später erneut versuchen.`);
+        }
+
+        throw new Error(`Archiv-Verzeichnis konnte nicht geladen werden (HTTP ${dirRes.status})`);
     }
 
     function formatGermanDate(dateStr) {
@@ -862,54 +930,54 @@
         tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Lade Daten...</td></tr>';
 
         try {
-            const dirUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${ARCHIV_PATH}`;
-            const dirRes = await fetch(dirUrl);
-
-            if (dirRes.status === 404) {
-                allGames = [];
-                nameAliasMap = new Map();
-                setStatus('', '');
-                populateSeasonDropdown();
-                populateClubDropdown();
-                populatePlayerDropdown();
-                renderStats();
-                return;
-            }
-
-            if (!dirRes.ok) {
-                throw new Error(`GitHub-API Fehler (${dirRes.status})`);
-            }
-
-            const files = await dirRes.json();
-            const jsonFiles = Array.isArray(files)
-                ? files.filter(f => f.type === 'file' && f.name.toLowerCase().endsWith('.json'))
-                : [];
-
-            let failedFilesCount = 0;
+            const jsonFiles = await fetchArchiveFileList();
+            const fileErrors = [];
 
             const loaded = await Promise.all(jsonFiles.map(async (file) => {
+                const fileName = file?.name || 'unbekannte_datei.json';
+                const downloadUrl = getArchiveDownloadUrl(file);
                 try {
-                    const fileRes = await fetch(file.url);
-                    if (!fileRes.ok) {
-                        failedFilesCount++;
+                    const res = await fetch(downloadUrl, { cache: 'no-store' });
+                    if (!res.ok) {
+                        const reason = `Download fehlgeschlagen (HTTP ${res.status})`;
+                        console.error(`[Archiv] ${fileName}: ${reason} (${downloadUrl})`);
+                        fileErrors.push(`${fileName}: ${reason}`);
                         return null;
                     }
-                    const fileJson = await fileRes.json();
-                    const rawContent = fileJson.content
-                        ? decodeBase64Utf8(fileJson.content)
-                        : await (await fetch(file.download_url)).text();
-                    const parsed = JSON.parse(rawContent);
-                    if (!parsed || typeof parsed !== 'object') {
-                        failedFilesCount++;
+
+                    const rawText = await res.text();
+                    if (!rawText || !rawText.trim()) {
+                        const reason = 'Datei ist leer';
+                        console.error(`[Archiv] ${fileName}: ${reason}`);
+                        fileErrors.push(`${fileName}: ${reason}`);
                         return null;
                     }
+
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        const reason = `Ungültiges JSON (${parseErr.message})`;
+                        console.error(`[Archiv] ${fileName}: ${reason}`);
+                        fileErrors.push(`${fileName}: ${reason}`);
+                        return null;
+                    }
+
+                    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                        const reason = 'JSON-Inhalt ist kein gültiges Spielbericht-Objekt';
+                        console.error(`[Archiv] ${fileName}: ${reason}`);
+                        fileErrors.push(`${fileName}: ${reason}`);
+                        return null;
+                    }
+
                     return {
                         ...parsed,
-                        _fileName: file.name
+                        _fileName: fileName
                     };
                 } catch (err) {
-                    failedFilesCount++;
-                    console.warn('Fehler beim Lesen einer Spieldatei:', file.name, err);
+                    const reason = `Netzwerk-/Ladefehler (${err.message || err})`;
+                    console.error(`[Archiv] ${fileName}: ${reason}`, err);
+                    fileErrors.push(`${fileName}: ${reason}`);
                     return null;
                 }
             }));
@@ -925,10 +993,11 @@
 
             rebuildNameAliasMap(allGames);
 
-            if (failedFilesCount > 0) {
+            if (fileErrors.length > 0) {
                 setStatus(
                     'warning',
-                    `Hinweis: ${failedFilesCount} Spielbericht${failedFilesCount === 1 ? '' : 'e'} im Archiv konnte${failedFilesCount === 1 ? '' : 'n'} nicht fehlerfrei geladen werden.`
+                    `Hinweis: ${fileErrors.length} Spielbericht${fileErrors.length === 1 ? '' : 'e'} im Archiv konnte${fileErrors.length === 1 ? '' : 'n'} nicht geladen werden:`,
+                    fileErrors
                 );
             } else {
                 setStatus('', '');
