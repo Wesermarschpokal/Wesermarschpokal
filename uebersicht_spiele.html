@@ -297,7 +297,7 @@
     <div class="filter-controls">
         <input type="text" id="searchInput" placeholder="Suche nach Verein, Datum oder Spielklasse...">
         <select id="saisonFilter" title="Spielzeit / Saison"></select>
-        <select id="vereinFilter" title="Verein / Mannschaft">
+        <select id="vereinFilter" title="Verein (mannschaftsunabhängig)">
             <option value="">Alle Vereine</option>
         </select>
         <select id="klasseFilter">
@@ -354,6 +354,29 @@
         }
         box.className = `status-box ${type}`;
         box.textContent = message;
+    }
+
+    /**
+     * Extrahiert den reinen Vereinsnamen ohne Mannschaftskennung
+     * (z. B. "Oldenbroker TV 1-6" -> "Oldenbroker TV").
+     */
+    function extractClubName(teamName) {
+        let name = String(teamName || '').trim().replace(/\s+/g, ' ');
+        if (!name) return '';
+
+        // Mehrfach angehängte Team-Zusätze wie "1-6", "I", "II", "J15", "U19" am Ende entfernen
+        let prev = '';
+        while (name && name !== prev) {
+            prev = name;
+            name = name
+                .replace(/\s+\d+\s*[-–/]\s*\d+$/i, '')
+                .replace(/\s+(?:U\d+|J\d+|mU\d+|wU\d+|mJ\d+|wJ\d+)$/i, '')
+                .replace(/\s+(?:I{1,4}|IV|V|VI{0,3})$/i, '')
+                .replace(/\s+\d+$/i, '')
+                .trim();
+        }
+
+        return name || String(teamName || '').trim().replace(/\s+/g, ' ');
     }
 
     function getSeasonFromDateStr(dateStr) {
@@ -431,10 +454,10 @@
             if (selectedKlasse && (g.spielklasse || '') !== selectedKlasse) return;
 
             [g.heimName, g.gastName].forEach(name => {
-                const clean = String(name || '').trim().replace(/\s+/g, ' ');
-                const key = clean.toLowerCase();
-                if (clean && !clubMap.has(key)) {
-                    clubMap.set(key, clean);
+                const club = extractClubName(name);
+                const key = club.toLowerCase();
+                if (club && !clubMap.has(key)) {
+                    clubMap.set(key, club);
                 }
             });
         });
@@ -688,9 +711,9 @@
         const filtered = sorted.filter(g => {
             const gameSeason = getSeasonFromDateStr(g?.datum);
             const matchesSeason = !selectedSeason || gameSeason === selectedSeason;
-            const heimKey = String(g.heimName || '').trim().toLowerCase();
-            const gastKey = String(g.gastName || '').trim().toLowerCase();
-            const matchesClub = !selectedClub || heimKey === selectedClub || gastKey === selectedClub;
+            const heimClubKey = extractClubName(g.heimName).toLowerCase();
+            const gastClubKey = extractClubName(g.gastName).toLowerCase();
+            const matchesClub = !selectedClub || heimClubKey === selectedClub || gastClubKey === selectedClub;
             const matchesKlasse = !selectedKlasse || (g.spielklasse || '') === selectedKlasse;
             const haystack = [
                 g.datum || '',
@@ -698,7 +721,9 @@
                 gameSeason,
                 g.spielklasse || '',
                 g.heimName || '',
-                g.gastName || ''
+                g.gastName || '',
+                heimClubKey,
+                gastClubKey
             ].join(' ').toLowerCase();
             const matchesSearch = !searchTerm || haystack.includes(searchTerm);
             return matchesSeason && matchesClub && matchesKlasse && matchesSearch;
