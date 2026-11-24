@@ -15,6 +15,9 @@
             --border-color: #cbd5e1;
             --success-bg: #dcfce7;
             --success-text: #166534;
+            --warning-bg: #fef9c3;
+            --warning-text: #854d0e;
+            --warning-border: #fde047;
             --danger-bg: #fee2e2;
             --danger-text: #991b1b;
         }
@@ -175,7 +178,7 @@
 
         @media (min-width: 700px) {
             .filter-grid {
-                grid-template-columns: 2fr 1fr 1fr 1fr;
+                grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
             }
         }
 
@@ -211,6 +214,13 @@
             background: #e0f2fe;
             color: #075985;
             border: 1px solid #7dd3fc;
+        }
+
+        .status-box.warning {
+            display: block;
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border: 1px solid var(--warning-border);
         }
 
         .status-box.error {
@@ -272,6 +282,23 @@
 
         tbody tr:hover {
             background: #f8fafc;
+        }
+
+        .player-link-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font: inherit;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .player-link-btn:hover {
+            color: var(--primary-hover);
         }
 
         .badge {
@@ -350,6 +377,12 @@
             <select id="saisonFilter"></select>
         </div>
         <div class="filter-group">
+            <label for="vereinFilter">Verein</label>
+            <select id="vereinFilter">
+                <option value="">Alle Vereine</option>
+            </select>
+        </div>
+        <div class="filter-group">
             <label for="klasseFilter">Spielklasse</label>
             <select id="klasseFilter">
                 <option value="">Alle Spielklassen</option>
@@ -392,6 +425,7 @@
     const ARCHIV_PATH = 'archiv';
 
     let allGames = [];
+    let nameAliasMap = new Map();
 
     function setStatus(type, message) {
         const box = document.getElementById('statusBox');
@@ -404,10 +438,6 @@
         box.textContent = message;
     }
 
-    /**
-     * Ermittelt die Saison im Format "JJJJ/(JJJJ+1)" anhand des Spieldatums.
-     * Zeitraum einer Saison: 01.09.JJJJ bis 31.08.(JJJJ+1).
-     */
     function getSeasonFromDateStr(dateStr) {
         const raw = (dateStr || '').trim();
         let year = null;
@@ -469,6 +499,42 @@
         }
     }
 
+    function populateClubDropdown() {
+        const select = document.getElementById('vereinFilter');
+        if (!select) return;
+        const prevVal = select.value;
+        const selectedSeason = document.getElementById('saisonFilter').value;
+        const selectedKlasse = document.getElementById('klasseFilter').value;
+
+        const clubMap = new Map();
+        allGames.forEach(g => {
+            const gameSeason = getSeasonFromDateStr(g?.datum);
+            if (selectedSeason && gameSeason !== selectedSeason) return;
+            if (selectedKlasse && (g.spielklasse || '') !== selectedKlasse) return;
+
+            [g.heimName, g.gastName].forEach(name => {
+                const clean = String(name || '').trim().replace(/\s+/g, ' ');
+                const key = clean.toLowerCase();
+                if (clean && !clubMap.has(key)) {
+                    clubMap.set(key, clean);
+                }
+            });
+        });
+
+        const sortedClubs = [...clubMap.values()].sort((a, b) => a.localeCompare(b, 'de'));
+
+        select.innerHTML = '<option value="">Alle Vereine</option>';
+        sortedClubs.forEach(club => {
+            select.add(new Option(club, club.toLowerCase()));
+        });
+
+        if (prevVal && [...select.options].some(o => o.value === prevVal)) {
+            select.value = prevVal;
+        } else {
+            select.value = '';
+        }
+    }
+
     function decodeBase64Utf8(base64Str) {
         const clean = (base64Str || '').replace(/\n/g, '');
         const binaryStr = atob(clean);
@@ -507,12 +573,91 @@
         return isNaN(dt.getTime()) ? null : dt.getTime();
     }
 
-    function normalizeName(name) {
+    function cleanRawName(name) {
         return String(name || '').trim().replace(/\s+/g, ' ');
     }
 
+    /**
+     * Erzeugt einen kanonischen Schlüssel für Personen, sodass z. B.
+     * "Mustermann, Max" und "Max Mustermann" denselben Schlüssel erhalten.
+     */
+    function getCanonicalPersonKey(name) {
+        const clean = cleanRawName(name);
+        if (!clean) return '';
+
+        if (clean.includes(',')) {
+            const parts = clean.split(',').map(p => p.trim().toLowerCase()).filter(Boolean);
+            if (parts.length >= 2) {
+                const last = parts[0];
+                const first = parts.slice(1).join(' ');
+                return `${last}, ${first}`;
+            }
+        }
+
+        const tokens = clean.toLowerCase().split(' ').filter(Boolean);
+        if (tokens.length === 2) {
+            return `${tokens[1]}, ${tokens[0]}`;
+        }
+
+        return clean.toLowerCase();
+    }
+
+    function formatCanonicalDisplay(canonicalKey) {
+        if (!canonicalKey) return '';
+        return canonicalKey
+            .split(' ')
+            .map(word => word.split('-').map(part => part ? part[0].toUpperCase() + part.slice(1) : '').join('-'))
+            .join(' ');
+    }
+
+    function rebuildNameAliasMap(games) {
+        const canonicalToVariants = new Map();
+
+        games.forEach(game => {
+            if (!Array.isArray(game.matches)) return;
+            game.matches.forEach(m => {
+                if (!isPlayedMatch(m)) return;
+                [m.playerA, m.playerB].forEach(sideStr => {
+                    cleanRawName(sideStr).split('/').forEach(part => {
+                        const clean = cleanRawName(part);
+                        const canon = getCanonicalPersonKey(clean);
+                        if (!canon) return;
+                        if (!canonicalToVariants.has(canon)) {
+                            canonicalToVariants.set(canon, new Map());
+                        }
+                        const variants = canonicalToVariants.get(canon);
+                        variants.set(clean, (variants.get(clean) || 0) + 1);
+                    });
+                });
+            });
+        });
+
+        const aliasMap = new Map();
+        canonicalToVariants.forEach((variants, canon) => {
+            // Bevorzuge Komma-Schreibweise ("Nachname, Vorname"), sonst häufigste Variante
+            const sortedVariants = [...variants.entries()].sort((a, b) => {
+                const aComma = a[0].includes(',') ? 1 : 0;
+                const bComma = b[0].includes(',') ? 1 : 0;
+                if (bComma !== aComma) return bComma - aComma;
+                if (b[1] !== a[1]) return b[1] - a[1];
+                return a[0].localeCompare(b[0], 'de');
+            });
+            const preferredLabel = sortedVariants[0]?.[0] || formatCanonicalDisplay(canon);
+            aliasMap.set(canon, preferredLabel);
+        });
+
+        nameAliasMap = aliasMap;
+    }
+
+    function normalizeName(name) {
+        const clean = cleanRawName(name);
+        if (!clean) return '';
+        const canon = getCanonicalPersonKey(clean);
+        return nameAliasMap.get(canon) || clean;
+    }
+
     function normalizeKey(name) {
-        return normalizeName(name).toLowerCase();
+        return getCanonicalPersonKey(name);
     }
 
     function isDoubleMatch(match) {
@@ -562,36 +707,56 @@
     }
 
     function getNormalizedDoubleLabel(pairText) {
-        const raw = normalizeName(pairText);
+        const raw = cleanRawName(pairText);
         const parts = raw.split('/').map(p => normalizeName(p)).filter(Boolean);
-        if (parts.length < 2) return raw;
+        if (parts.length < 2) return normalizeName(raw);
         const sorted = [...parts].sort((a, b) => a.localeCompare(b, 'de'));
         return sorted.join(' / ');
     }
 
+    function getNormalizedDoubleKey(pairText) {
+        const raw = cleanRawName(pairText);
+        const parts = raw.split('/').map(p => normalizeKey(p)).filter(Boolean);
+        if (parts.length < 2) return normalizeKey(raw);
+        return [...parts].sort().join(' / ');
+    }
+
     function pairContainsPlayer(pairText, playerKey) {
-        const parts = normalizeName(pairText).split('/').map(p => normalizeKey(p)).filter(Boolean);
+        const parts = cleanRawName(pairText).split('/').map(p => normalizeKey(p)).filter(Boolean);
         return parts.includes(playerKey);
     }
 
-    function matchesFilters(game, selectedSeason, selectedKlasse) {
+    function matchesFilters(game, selectedSeason, selectedClub, selectedKlasse) {
         const gameSeason = getSeasonFromDateStr(game?.datum);
         if (selectedSeason && gameSeason !== selectedSeason) return false;
         if (selectedKlasse && (game.spielklasse || '') !== selectedKlasse) return false;
+        if (selectedClub) {
+            const heimKey = cleanRawName(game.heimName).toLowerCase();
+            const gastKey = cleanRawName(game.gastName).toLowerCase();
+            if (heimKey !== selectedClub && gastKey !== selectedClub) return false;
+        }
         return true;
     }
 
-    function collectAllPlayers(games, selectedSeason, selectedKlasse) {
+    function sideMatchesSelectedClub(game, side, selectedClub) {
+        if (!selectedClub) return true;
+        const teamName = side === 'A' ? game.heimName : game.gastName;
+        return cleanRawName(teamName).toLowerCase() === selectedClub;
+    }
+
+    function collectAllPlayers(games, selectedSeason, selectedClub, selectedKlasse) {
         const map = new Map();
 
         games.forEach(game => {
-            if (!matchesFilters(game, selectedSeason, selectedKlasse)) return;
+            if (!matchesFilters(game, selectedSeason, selectedClub, selectedKlasse)) return;
 
             if (Array.isArray(game.matches)) {
                 game.matches.forEach(m => {
                     if (!isPlayedMatch(m)) return;
-                    [m.playerA, m.playerB].forEach(sideStr => {
-                        normalizeName(sideStr).split('/').forEach(part => {
+                    ['A', 'B'].forEach(side => {
+                        if (!sideMatchesSelectedClub(game, side, selectedClub)) return;
+                        const sideStr = side === 'A' ? m.playerA : m.playerB;
+                        cleanRawName(sideStr).split('/').forEach(part => {
                             const clean = normalizeName(part);
                             const key = normalizeKey(clean);
                             if (key && !map.has(key)) {
@@ -611,10 +776,11 @@
     function populatePlayerDropdown() {
         const select = document.getElementById('playerFilter');
         const selectedSeason = document.getElementById('saisonFilter').value;
+        const selectedClub = document.getElementById('vereinFilter').value;
         const selectedKlasse = document.getElementById('klasseFilter').value;
         const prevVal = select.value;
 
-        const players = collectAllPlayers(allGames, selectedSeason, selectedKlasse);
+        const players = collectAllPlayers(allGames, selectedSeason, selectedClub, selectedKlasse);
         select.innerHTML = '<option value="">Alle Spieler (Bilanzübersicht)</option>';
 
         players.forEach(p => {
@@ -640,8 +806,10 @@
 
             if (dirRes.status === 404) {
                 allGames = [];
+                nameAliasMap = new Map();
                 setStatus('', '');
                 populateSeasonDropdown();
+                populateClubDropdown();
                 populatePlayerDropdown();
                 renderStats();
                 return;
@@ -656,20 +824,30 @@
                 ? files.filter(f => f.type === 'file' && f.name.toLowerCase().endsWith('.json'))
                 : [];
 
+            let failedFilesCount = 0;
+
             const loaded = await Promise.all(jsonFiles.map(async (file) => {
                 try {
                     const fileRes = await fetch(file.url);
-                    if (!fileRes.ok) return null;
+                    if (!fileRes.ok) {
+                        failedFilesCount++;
+                        return null;
+                    }
                     const fileJson = await fileRes.json();
                     const rawContent = fileJson.content
                         ? decodeBase64Utf8(fileJson.content)
                         : await (await fetch(file.download_url)).text();
                     const parsed = JSON.parse(rawContent);
+                    if (!parsed || typeof parsed !== 'object') {
+                        failedFilesCount++;
+                        return null;
+                    }
                     return {
                         ...parsed,
                         _fileName: file.name
                     };
                 } catch (err) {
+                    failedFilesCount++;
                     console.warn('Fehler beim Lesen einer Spieldatei:', file.name, err);
                     return null;
                 }
@@ -684,27 +862,53 @@
                     return (b.timestamp || 0) - (a.timestamp || 0);
                 });
 
-            setStatus('', '');
+            rebuildNameAliasMap(allGames);
+
+            if (failedFilesCount > 0) {
+                setStatus(
+                    'warning',
+                    `Hinweis: ${failedFilesCount} Spielbericht${failedFilesCount === 1 ? '' : 'e'} im Archiv konnte${failedFilesCount === 1 ? '' : 'n'} nicht fehlerfrei geladen werden.`
+                );
+            } else {
+                setStatus('', '');
+            }
+
             populateSeasonDropdown();
+            populateClubDropdown();
             populatePlayerDropdown();
             renderStats();
         } catch (err) {
             console.error(err);
-            setStatus('error', `Statistikdaten konnten nicht geladen werden: ${err.message}`);
+            setStatus('error', `Fehler beim Laden der Spielberichte: ${err.message}`);
             tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Keine Daten verfügbar.</td></tr>';
         }
     }
 
-    function buildFilterSummary(selectedSeason, selectedKlasse, mode) {
+    function buildFilterSummary(selectedSeason, selectedClub, selectedKlasse, mode) {
+        const clubSelect = document.getElementById('vereinFilter');
+        const clubLabel = selectedClub
+            ? (clubSelect.options[clubSelect.selectedIndex]?.textContent || selectedClub)
+            : '';
+
         const parts = [];
         parts.push(selectedSeason ? `Spielzeit: ${selectedSeason}` : 'Keine Spielzeit gewählt');
+        if (clubLabel) parts.push(`Verein: ${clubLabel}`);
         if (selectedKlasse) parts.push(`Spielklasse: ${selectedKlasse}`);
         parts.push(mode === 'doppel' ? 'Doppel' : 'Einzel');
         parts.push('Nur gespielte Partien');
         return parts.join(' · ');
     }
 
-    function renderOverviewTable(selectedSeason, selectedKlasse, mode) {
+    function selectPlayerFromOverview(playerKey) {
+        const playerSelect = document.getElementById('playerFilter');
+        if (!playerSelect || !playerKey) return;
+        if ([...playerSelect.options].some(o => o.value === playerKey)) {
+            playerSelect.value = playerKey;
+            renderStats();
+        }
+    }
+
+    function renderOverviewTable(selectedSeason, selectedClub, selectedKlasse, mode) {
         const thead = document.getElementById('statsTableHead');
         const tbody = document.getElementById('statsTableBody');
         const heading = document.getElementById('tableHeading');
@@ -712,7 +916,7 @@
 
         const isDouble = mode === 'doppel';
         heading.textContent = isDouble ? 'Doppelpaarungen – Bilanz' : 'Spieler – Bilanz';
-        subheading.textContent = buildFilterSummary(selectedSeason, selectedKlasse, mode);
+        subheading.textContent = buildFilterSummary(selectedSeason, selectedClub, selectedKlasse, mode);
 
         thead.innerHTML = `
             <tr>
@@ -739,7 +943,7 @@
         }
 
         allGames.forEach(game => {
-            if (!matchesFilters(game, selectedSeason, selectedKlasse)) return;
+            if (!matchesFilters(game, selectedSeason, selectedClub, selectedKlasse)) return;
             if (!Array.isArray(game.matches)) return;
 
             game.matches.forEach(m => {
@@ -751,8 +955,8 @@
                 const labelA = isDouble ? getNormalizedDoubleLabel(m.playerA) : normalizeName(m.playerA);
                 const labelB = isDouble ? getNormalizedDoubleLabel(m.playerB) : normalizeName(m.playerB);
 
-                if (labelA) {
-                    const keyA = normalizeKey(labelA);
+                if (labelA && sideMatchesSelectedClub(game, 'A', selectedClub)) {
+                    const keyA = isDouble ? getNormalizedDoubleKey(m.playerA) : normalizeKey(m.playerA);
                     const entryA = ensureEntry(keyA, labelA);
                     entryA.setsWon += saetzeA;
                     entryA.setsLost += saetzeB;
@@ -760,8 +964,8 @@
                     else if (saetzeB > saetzeA) entryA.losses += 1;
                 }
 
-                if (labelB) {
-                    const keyB = normalizeKey(labelB);
+                if (labelB && sideMatchesSelectedClub(game, 'B', selectedClub)) {
+                    const keyB = isDouble ? getNormalizedDoubleKey(m.playerB) : normalizeKey(m.playerB);
                     const entryB = ensureEntry(keyB, labelB);
                     entryB.setsWon += saetzeB;
                     entryB.setsLost += saetzeA;
@@ -789,8 +993,18 @@
             const tr = document.createElement('tr');
 
             const tdName = document.createElement('td');
-            tdName.textContent = r.label;
-            tdName.style.fontWeight = '600';
+            if (!isDouble) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'player-link-btn';
+                btn.textContent = r.label;
+                btn.title = `Einzelpartien von ${r.label} anzeigen`;
+                btn.addEventListener('click', () => selectPlayerFromOverview(r.key));
+                tdName.appendChild(btn);
+            } else {
+                tdName.textContent = r.label;
+                tdName.style.fontWeight = '600';
+            }
 
             const tdGames = document.createElement('td');
             tdGames.className = 'num';
@@ -807,18 +1021,18 @@
         });
     }
 
-    function renderPlayerMatchesTable(playerKey, selectedSeason, selectedKlasse, mode) {
+    function renderPlayerMatchesTable(playerKey, selectedSeason, selectedClub, selectedKlasse, mode) {
         const thead = document.getElementById('statsTableHead');
         const tbody = document.getElementById('statsTableBody');
         const heading = document.getElementById('tableHeading');
         const subheading = document.getElementById('tableSubheading');
 
         const playerSelect = document.getElementById('playerFilter');
-        const playerLabel = playerSelect.options[playerSelect.selectedIndex]?.textContent || playerKey;
+        const playerLabel = playerSelect.options[playerSelect.selectedIndex]?.textContent || formatCanonicalDisplay(playerKey);
         const isDouble = mode === 'doppel';
 
         heading.textContent = `Gespielte Partien von ${playerLabel}`;
-        subheading.textContent = buildFilterSummary(selectedSeason, selectedKlasse, mode);
+        subheading.textContent = buildFilterSummary(selectedSeason, selectedClub, selectedKlasse, mode);
 
         thead.innerHTML = `
             <tr>
@@ -835,7 +1049,7 @@
         const playerMatches = [];
 
         allGames.forEach(game => {
-            if (!matchesFilters(game, selectedSeason, selectedKlasse)) return;
+            if (!matchesFilters(game, selectedSeason, selectedClub, selectedKlasse)) return;
             if (!Array.isArray(game.matches)) return;
 
             game.matches.forEach(m => {
@@ -843,12 +1057,12 @@
                 if (isDouble && !isDoubleMatch(m)) return;
                 if (!isDouble && !isSingleMatch(m)) return;
 
-                const inA = isDouble
+                const inA = (isDouble
                     ? pairContainsPlayer(m.playerA, playerKey)
-                    : normalizeKey(m.playerA) === playerKey;
-                const inB = isDouble
+                    : normalizeKey(m.playerA) === playerKey) && sideMatchesSelectedClub(game, 'A', selectedClub);
+                const inB = (isDouble
                     ? pairContainsPlayer(m.playerB, playerKey)
-                    : normalizeKey(m.playerB) === playerKey;
+                    : normalizeKey(m.playerB) === playerKey) && sideMatchesSelectedClub(game, 'B', selectedClub);
 
                 if (!inA && !inB) return;
 
@@ -929,13 +1143,14 @@
     function renderStats() {
         const playerKey = document.getElementById('playerFilter').value;
         const selectedSeason = document.getElementById('saisonFilter').value;
+        const selectedClub = document.getElementById('vereinFilter').value;
         const selectedKlasse = document.getElementById('klasseFilter').value;
         const mode = document.getElementById('modeFilter').value;
 
         if (playerKey) {
-            renderPlayerMatchesTable(playerKey, selectedSeason, selectedKlasse, mode);
+            renderPlayerMatchesTable(playerKey, selectedSeason, selectedClub, selectedKlasse, mode);
         } else {
-            renderOverviewTable(selectedSeason, selectedKlasse, mode);
+            renderOverviewTable(selectedSeason, selectedClub, selectedKlasse, mode);
         }
     }
 
@@ -956,10 +1171,16 @@
 
         document.getElementById('btnRefresh').addEventListener('click', loadGamesFromGitHub);
         document.getElementById('saisonFilter').addEventListener('change', () => {
+            populateClubDropdown();
+            populatePlayerDropdown();
+            renderStats();
+        });
+        document.getElementById('vereinFilter').addEventListener('change', () => {
             populatePlayerDropdown();
             renderStats();
         });
         document.getElementById('klasseFilter').addEventListener('change', () => {
+            populateClubDropdown();
             populatePlayerDropdown();
             renderStats();
         });
