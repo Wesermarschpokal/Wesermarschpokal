@@ -160,6 +160,16 @@
             background-color: #475569;
         }
 
+        .btn-outline {
+            background-color: #ffffff;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background-color: #f0f9ff;
+        }
+
         .btn-sm {
             padding: 5px 10px;
             font-size: 0.8rem;
@@ -237,6 +247,13 @@
             flex-wrap: wrap;
             gap: 8px;
             margin: 8px 0 10px 0;
+        }
+
+        .section-title-left {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .section-title h2 {
@@ -403,7 +420,10 @@
     <div id="statusBox" class="status-box"></div>
 
     <div class="section-title">
-        <h2 id="tableHeading">Spielerbilanz</h2>
+        <div class="section-title-left">
+            <h2 id="tableHeading">Spielerbilanz</h2>
+            <button type="button" class="btn btn-outline btn-sm" id="btnBackToOverview" style="display: none;">← Zurück zur Bilanz</button>
+        </div>
         <span class="section-sub" id="tableSubheading"></span>
     </div>
 
@@ -436,6 +456,34 @@
         }
         box.className = `status-box ${type}`;
         box.textContent = message;
+    }
+
+    function updateBackButtonVisibility(hasSelectedPlayer) {
+        const btn = document.getElementById('btnBackToOverview');
+        if (!btn) return;
+        btn.style.display = hasSelectedPlayer ? 'inline-flex' : 'none';
+    }
+
+    /**
+     * Extrahiert den reinen Vereinsnamen ohne Mannschaftskennung
+     * (z. B. "Oldenbroker TV 1-6" -> "Oldenbroker TV").
+     */
+    function extractClubName(teamName) {
+        let name = String(teamName || '').trim().replace(/\s+/g, ' ');
+        if (!name) return '';
+
+        let prev = '';
+        while (name && name !== prev) {
+            prev = name;
+            name = name
+                .replace(/\s+\d+\s*[-–/]\s*\d+$/i, '')
+                .replace(/\s+(?:U\d+|J\d+|mU\d+|wU\d+|mJ\d+|wJ\d+)$/i, '')
+                .replace(/\s+(?:I{1,4}|IV|V|VI{0,3})$/i, '')
+                .replace(/\s+\d+$/i, '')
+                .trim();
+        }
+
+        return name || String(teamName || '').trim().replace(/\s+/g, ' ');
     }
 
     function getSeasonFromDateStr(dateStr) {
@@ -513,10 +561,10 @@
             if (selectedKlasse && (g.spielklasse || '') !== selectedKlasse) return;
 
             [g.heimName, g.gastName].forEach(name => {
-                const clean = String(name || '').trim().replace(/\s+/g, ' ');
-                const key = clean.toLowerCase();
-                if (clean && !clubMap.has(key)) {
-                    clubMap.set(key, clean);
+                const club = extractClubName(name);
+                const key = club.toLowerCase();
+                if (club && !clubMap.has(key)) {
+                    clubMap.set(key, club);
                 }
             });
         });
@@ -577,10 +625,6 @@
         return String(name || '').trim().replace(/\s+/g, ' ');
     }
 
-    /**
-     * Erzeugt einen kanonischen Schlüssel für Personen, sodass z. B.
-     * "Mustermann, Max" und "Max Mustermann" denselben Schlüssel erhalten.
-     */
     function getCanonicalPersonKey(name) {
         const clean = cleanRawName(name);
         if (!clean) return '';
@@ -634,7 +678,6 @@
 
         const aliasMap = new Map();
         canonicalToVariants.forEach((variants, canon) => {
-            // Bevorzuge Komma-Schreibweise ("Nachname, Vorname"), sonst häufigste Variante
             const sortedVariants = [...variants.entries()].sort((a, b) => {
                 const aComma = a[0].includes(',') ? 1 : 0;
                 const bComma = b[0].includes(',') ? 1 : 0;
@@ -731,9 +774,9 @@
         if (selectedSeason && gameSeason !== selectedSeason) return false;
         if (selectedKlasse && (game.spielklasse || '') !== selectedKlasse) return false;
         if (selectedClub) {
-            const heimKey = cleanRawName(game.heimName).toLowerCase();
-            const gastKey = cleanRawName(game.gastName).toLowerCase();
-            if (heimKey !== selectedClub && gastKey !== selectedClub) return false;
+            const heimClubKey = extractClubName(game.heimName).toLowerCase();
+            const gastClubKey = extractClubName(game.gastName).toLowerCase();
+            if (heimClubKey !== selectedClub && gastClubKey !== selectedClub) return false;
         }
         return true;
     }
@@ -741,7 +784,7 @@
     function sideMatchesSelectedClub(game, side, selectedClub) {
         if (!selectedClub) return true;
         const teamName = side === 'A' ? game.heimName : game.gastName;
-        return cleanRawName(teamName).toLowerCase() === selectedClub;
+        return extractClubName(teamName).toLowerCase() === selectedClub;
     }
 
     function collectAllPlayers(games, selectedSeason, selectedClub, selectedKlasse) {
@@ -908,7 +951,16 @@
         }
     }
 
+    function resetPlayerFilterToOverview() {
+        const playerSelect = document.getElementById('playerFilter');
+        if (!playerSelect) return;
+        playerSelect.value = '';
+        renderStats();
+    }
+
     function renderOverviewTable(selectedSeason, selectedClub, selectedKlasse, mode) {
+        updateBackButtonVisibility(false);
+
         const thead = document.getElementById('statsTableHead');
         const tbody = document.getElementById('statsTableBody');
         const heading = document.getElementById('tableHeading');
@@ -1022,6 +1074,8 @@
     }
 
     function renderPlayerMatchesTable(playerKey, selectedSeason, selectedClub, selectedKlasse, mode) {
+        updateBackButtonVisibility(true);
+
         const thead = document.getElementById('statsTableHead');
         const tbody = document.getElementById('statsTableBody');
         const heading = document.getElementById('tableHeading');
@@ -1170,6 +1224,7 @@
         }
 
         document.getElementById('btnRefresh').addEventListener('click', loadGamesFromGitHub);
+        document.getElementById('btnBackToOverview').addEventListener('click', resetPlayerFilterToOverview);
         document.getElementById('saisonFilter').addEventListener('change', () => {
             populateClubDropdown();
             populatePlayerDropdown();
