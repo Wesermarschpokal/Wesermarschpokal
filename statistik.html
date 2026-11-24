@@ -962,7 +962,6 @@
 
     function selectPlayerFromOverview(playerKey) {
         const playerSelect = document.getElementById('playerFilter');
-        const modeSelect = document.getElementById('modeFilter');
         if (!playerSelect || !playerKey) return;
 
         if (![...playerSelect.options].some(o => o.value === playerKey)) {
@@ -971,9 +970,6 @@
         }
 
         playerSelect.value = playerKey;
-        if (modeSelect && modeSelect.value === 'doppel') {
-            modeSelect.value = 'einzel';
-        }
         renderStats();
     }
 
