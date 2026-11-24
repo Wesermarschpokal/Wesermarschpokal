@@ -318,6 +318,12 @@
             color: var(--primary-hover);
         }
 
+        .pair-sep {
+            color: var(--text-muted);
+            font-weight: 600;
+            margin: 0 4px;
+        }
+
         .badge {
             display: inline-block;
             padding: 2px 8px;
@@ -703,6 +709,18 @@
         return getCanonicalPersonKey(name);
     }
 
+    function getDoublePlayers(pairText) {
+        const raw = cleanRawName(pairText);
+        return raw
+            .split('/')
+            .map(part => {
+                const label = normalizeName(part);
+                const key = normalizeKey(label);
+                return label && key ? { label, key } : null;
+            })
+            .filter(Boolean);
+    }
+
     function isDoubleMatch(match) {
         return match && (match.type === 'doppel' || match.type === 'frei');
     }
@@ -749,24 +767,24 @@
         return { ballsA, ballsB };
     }
 
+    function getNormalizedDoublePlayersSorted(pairText) {
+        return getDoublePlayers(pairText).sort((a, b) => a.label.localeCompare(b.label, 'de'));
+    }
+
     function getNormalizedDoubleLabel(pairText) {
-        const raw = cleanRawName(pairText);
-        const parts = raw.split('/').map(p => normalizeName(p)).filter(Boolean);
-        if (parts.length < 2) return normalizeName(raw);
-        const sorted = [...parts].sort((a, b) => a.localeCompare(b, 'de'));
-        return sorted.join(' / ');
+        const players = getNormalizedDoublePlayersSorted(pairText);
+        if (players.length < 2) return normalizeName(pairText);
+        return players.map(p => p.label).join(' / ');
     }
 
     function getNormalizedDoubleKey(pairText) {
-        const raw = cleanRawName(pairText);
-        const parts = raw.split('/').map(p => normalizeKey(p)).filter(Boolean);
-        if (parts.length < 2) return normalizeKey(raw);
-        return [...parts].sort().join(' / ');
+        const players = getNormalizedDoublePlayersSorted(pairText);
+        if (players.length < 2) return normalizeKey(pairText);
+        return players.map(p => p.key).join(' / ');
     }
 
     function pairContainsPlayer(pairText, playerKey) {
-        const parts = cleanRawName(pairText).split('/').map(p => normalizeKey(p)).filter(Boolean);
-        return parts.includes(playerKey);
+        return getDoublePlayers(pairText).some(p => p.key === playerKey);
     }
 
     function matchesFilters(game, selectedSeason, selectedClub, selectedKlasse) {
@@ -944,11 +962,19 @@
 
     function selectPlayerFromOverview(playerKey) {
         const playerSelect = document.getElementById('playerFilter');
+        const modeSelect = document.getElementById('modeFilter');
         if (!playerSelect || !playerKey) return;
-        if ([...playerSelect.options].some(o => o.value === playerKey)) {
-            playerSelect.value = playerKey;
-            renderStats();
+
+        if (![...playerSelect.options].some(o => o.value === playerKey)) {
+            const label = nameAliasMap.get(playerKey) || formatCanonicalDisplay(playerKey);
+            playerSelect.add(new Option(label, playerKey));
         }
+
+        playerSelect.value = playerKey;
+        if (modeSelect && modeSelect.value === 'doppel') {
+            modeSelect.value = 'einzel';
+        }
+        renderStats();
     }
 
     function resetPlayerFilterToOverview() {
@@ -956,6 +982,16 @@
         if (!playerSelect) return;
         playerSelect.value = '';
         renderStats();
+    }
+
+    function createPlayerLinkButton(playerKey, label) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'player-link-btn';
+        btn.textContent = label;
+        btn.title = `Filter auf ${label} setzen`;
+        btn.addEventListener('click', () => selectPlayerFromOverview(playerKey));
+        return btn;
     }
 
     function renderOverviewTable(selectedSeason, selectedClub, selectedKlasse, mode) {
@@ -980,11 +1016,12 @@
 
         const statsMap = new Map();
 
-        function ensureEntry(key, label) {
+        function ensureEntry(key, label, players = []) {
             if (!statsMap.has(key)) {
                 statsMap.set(key, {
                     key,
                     label,
+                    players,
                     wins: 0,
                     losses: 0,
                     setsWon: 0,
@@ -1009,7 +1046,10 @@
 
                 if (labelA && sideMatchesSelectedClub(game, 'A', selectedClub)) {
                     const keyA = isDouble ? getNormalizedDoubleKey(m.playerA) : normalizeKey(m.playerA);
-                    const entryA = ensureEntry(keyA, labelA);
+                    const playersA = isDouble
+                        ? getNormalizedDoublePlayersSorted(m.playerA)
+                        : [{ key: keyA, label: labelA }];
+                    const entryA = ensureEntry(keyA, labelA, playersA);
                     entryA.setsWon += saetzeA;
                     entryA.setsLost += saetzeB;
                     if (saetzeA > saetzeB) entryA.wins += 1;
@@ -1018,7 +1058,10 @@
 
                 if (labelB && sideMatchesSelectedClub(game, 'B', selectedClub)) {
                     const keyB = isDouble ? getNormalizedDoubleKey(m.playerB) : normalizeKey(m.playerB);
-                    const entryB = ensureEntry(keyB, labelB);
+                    const playersB = isDouble
+                        ? getNormalizedDoublePlayersSorted(m.playerB)
+                        : [{ key: keyB, label: labelB }];
+                    const entryB = ensureEntry(keyB, labelB, playersB);
                     entryB.setsWon += saetzeB;
                     entryB.setsLost += saetzeA;
                     if (saetzeB > saetzeA) entryB.wins += 1;
@@ -1046,13 +1089,17 @@
 
             const tdName = document.createElement('td');
             if (!isDouble) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'player-link-btn';
-                btn.textContent = r.label;
-                btn.title = `Einzelpartien von ${r.label} anzeigen`;
-                btn.addEventListener('click', () => selectPlayerFromOverview(r.key));
-                tdName.appendChild(btn);
+                tdName.appendChild(createPlayerLinkButton(r.key, r.label));
+            } else if (Array.isArray(r.players) && r.players.length >= 2) {
+                r.players.forEach((p, idx) => {
+                    if (idx > 0) {
+                        const sep = document.createElement('span');
+                        sep.className = 'pair-sep';
+                        sep.textContent = '/';
+                        tdName.appendChild(sep);
+                    }
+                    tdName.appendChild(createPlayerLinkButton(p.key, p.label));
+                });
             } else {
                 tdName.textContent = r.label;
                 tdName.style.fontWeight = '600';
@@ -1082,7 +1129,9 @@
         const subheading = document.getElementById('tableSubheading');
 
         const playerSelect = document.getElementById('playerFilter');
-        const playerLabel = playerSelect.options[playerSelect.selectedIndex]?.textContent || formatCanonicalDisplay(playerKey);
+        const playerLabel = playerSelect.options[playerSelect.selectedIndex]?.textContent
+            || nameAliasMap.get(playerKey)
+            || formatCanonicalDisplay(playerKey);
         const isDouble = mode === 'doppel';
 
         heading.textContent = `Gespielte Partien von ${playerLabel}`;
