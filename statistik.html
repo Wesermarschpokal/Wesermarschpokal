@@ -212,10 +212,10 @@
         }
 
         .status-box {
-            padding: 12px 14px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 0.9rem;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 14px;
+            font-size: 0.84rem;
             display: none;
         }
 
@@ -226,28 +226,92 @@
             border: 1px solid #7dd3fc;
         }
 
-        .status-box.warning {
-            display: block;
-            background: var(--warning-bg);
-            color: var(--warning-text);
-            border: 1px solid var(--warning-border);
-        }
-
-        .status-box.error {
-            display: block;
+        .status-box.db-error {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             background: var(--danger-bg);
             color: var(--danger-text);
             border: 1px solid #fca5a5;
+            cursor: pointer;
+            font-weight: 600;
         }
 
-        .error-file-list {
-            margin: 8px 0 0 0;
-            padding-left: 20px;
-            font-size: 0.84rem;
+        .status-box.db-error:hover {
+            background: #fecaca;
         }
 
-        .error-file-list li {
-            margin-bottom: 3px;
+        /* Hinweisfenster (Modal) */
+        .error-modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .error-modal-backdrop.active {
+            display: flex;
+        }
+
+        .error-modal {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            max-width: 540px;
+            width: 100%;
+            padding: 18px 20px;
+        }
+
+        .error-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .error-modal-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--danger-text);
+        }
+
+        .error-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            line-height: 1;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 2px 6px;
+        }
+
+        .error-modal-close:hover {
+            color: var(--text-main);
+        }
+
+        .error-modal-body {
+            font-size: 0.88rem;
+            color: var(--text-main);
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 12px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .error-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 14px;
         }
 
         .section-title {
@@ -433,7 +497,20 @@
         </div>
     </div>
 
-    <div id="statusBox" class="status-box"></div>
+    <div id="statusBox" class="status-box" role="button" tabindex="0"></div>
+
+    <div class="error-modal-backdrop" id="errorModalBackdrop" aria-hidden="true">
+        <div class="error-modal" role="dialog" aria-modal="true" aria-labelledby="errorModalTitle">
+            <div class="error-modal-header">
+                <h3 id="errorModalTitle">Datenbankfehler</h3>
+                <button type="button" class="error-modal-close" id="errorModalClose" title="Schließen">&times;</button>
+            </div>
+            <div class="error-modal-body" id="errorModalBody"></div>
+            <div class="error-modal-footer">
+                <button type="button" class="btn btn-sm" id="errorModalOk">Schließen</button>
+            </div>
+        </div>
+    </div>
 
     <div class="section-title">
         <div class="section-title-left">
@@ -462,31 +539,42 @@
 
     let allGames = [];
     let nameAliasMap = new Map();
+    let lastErrorDescription = '';
 
-    function setStatus(type, message, details = []) {
+    function openErrorModal() {
+        if (!lastErrorDescription) return;
+        const backdrop = document.getElementById('errorModalBackdrop');
+        const body = document.getElementById('errorModalBody');
+        if (!backdrop || !body) return;
+        body.textContent = lastErrorDescription;
+        backdrop.classList.add('active');
+        backdrop.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeErrorModal() {
+        const backdrop = document.getElementById('errorModalBackdrop');
+        if (!backdrop) return;
+        backdrop.classList.remove('active');
+        backdrop.setAttribute('aria-hidden', 'true');
+    }
+
+    function setInfoStatus(message) {
+        lastErrorDescription = '';
         const box = document.getElementById('statusBox');
         if (!message) {
             box.className = 'status-box';
-            box.innerHTML = '';
+            box.textContent = '';
             return;
         }
-        box.className = `status-box ${type}`;
-        box.innerHTML = '';
+        box.className = 'status-box info';
+        box.textContent = message;
+    }
 
-        const titleEl = document.createElement('div');
-        titleEl.textContent = message;
-        box.appendChild(titleEl);
-
-        if (Array.isArray(details) && details.length > 0) {
-            const listEl = document.createElement('ul');
-            listEl.className = 'error-file-list';
-            details.forEach(item => {
-                const li = document.createElement('li');
-                li.textContent = item;
-                listEl.appendChild(li);
-            });
-            box.appendChild(listEl);
-        }
+    function setDbError(description) {
+        lastErrorDescription = description || 'Unbekannter Datenbankfehler beim Laden der Spielberichte.';
+        const box = document.getElementById('statusBox');
+        box.className = 'status-box db-error';
+        box.textContent = '⚠️ Datenbankfehler';
     }
 
     function updateBackButtonVisibility(hasSelectedPlayer) {
@@ -633,7 +721,6 @@
                 : [];
         }
 
-        // Fallback bei Rate-Limit (403/429) oder API-Blockade über Git Trees API
         if (dirRes.status === 403 || dirRes.status === 429) {
             for (const branch of ['main', 'master']) {
                 const treeUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/git/trees/${branch}?recursive=1`;
@@ -661,10 +748,10 @@
                     });
                 }
             }
-            throw new Error(`GitHub-API Limit erreicht (HTTP ${dirRes.status}). Bitte etwas warten oder später erneut versuchen.`);
+            throw new Error(`GitHub-API Limit erreicht (HTTP ${dirRes.status}).`);
         }
 
-        throw new Error(`Archiv-Verzeichnis konnte nicht geladen werden (HTTP ${dirRes.status})`);
+        throw new Error(`Archiv-Verzeichnis konnte nicht geladen werden (HTTP ${dirRes.status}).`);
     }
 
     function formatGermanDate(dateStr) {
@@ -925,7 +1012,7 @@
     }
 
     async function loadGamesFromGitHub() {
-        setStatus('info', 'Spielberichte werden aus dem Archiv geladen...');
+        setInfoStatus('Spielberichte werden aus dem Archiv geladen...');
         const tbody = document.getElementById('statsTableBody');
         tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Lade Daten...</td></tr>';
 
@@ -994,13 +1081,12 @@
             rebuildNameAliasMap(allGames);
 
             if (fileErrors.length > 0) {
-                setStatus(
-                    'warning',
-                    `Hinweis: ${fileErrors.length} Spielbericht${fileErrors.length === 1 ? '' : 'e'} im Archiv konnte${fileErrors.length === 1 ? '' : 'n'} nicht geladen werden:`,
-                    fileErrors
+                setDbError(
+                    `${fileErrors.length} Spielbericht${fileErrors.length === 1 ? '' : 'e'} im Archiv konnte${fileErrors.length === 1 ? '' : 'n'} nicht geladen werden:\n\n` +
+                    fileErrors.join('\n')
                 );
             } else {
-                setStatus('', '');
+                setInfoStatus('');
             }
 
             populateSeasonDropdown();
@@ -1009,7 +1095,7 @@
             renderStats();
         } catch (err) {
             console.error(err);
-            setStatus('error', `Fehler beim Laden der Spielberichte: ${err.message}`);
+            setDbError(`Fehler beim Laden der Spielberichte:\n${err.message || err}`);
             tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Keine Daten verfügbar.</td></tr>';
         }
     }
@@ -1336,6 +1422,31 @@
                 }
             });
         }
+
+        const statusBox = document.getElementById('statusBox');
+        if (statusBox) {
+            statusBox.addEventListener('click', () => {
+                if (statusBox.classList.contains('db-error')) {
+                    openErrorModal();
+                }
+            });
+            statusBox.addEventListener('keydown', (e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && statusBox.classList.contains('db-error')) {
+                    e.preventDefault();
+                    openErrorModal();
+                }
+            });
+        }
+
+        const modalBackdrop = document.getElementById('errorModalBackdrop');
+        document.getElementById('errorModalClose')?.addEventListener('click', closeErrorModal);
+        document.getElementById('errorModalOk')?.addEventListener('click', closeErrorModal);
+        modalBackdrop?.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) closeErrorModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeErrorModal();
+        });
 
         document.getElementById('btnRefresh').addEventListener('click', loadGamesFromGitHub);
         document.getElementById('btnBackToOverview').addEventListener('click', resetPlayerFilterToOverview);
